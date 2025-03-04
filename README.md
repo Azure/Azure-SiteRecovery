@@ -4,7 +4,7 @@ For customers running Virtual Machines on Red Hat Enterprise Linux 8 (RHEL 8) wi
 
 # Execution Details
 
-If you have already upgraded your Virtual Machines (VMs) with **Azure Site Recovery** (ASR) replication enabled to kernel version **4.18.0-305.148.1.el8_4** or any later **RHEL 8.4 kernel**, please follow the steps below to restore replication functionality and avoid disruptions:
+**Case A:** If you have already upgraded your Virtual Machines (VMs) with **Azure Site Recovery** (ASR) replication enabled to kernel version **4.18.0-305.148.1.el8_4** or any later **RHEL 8.4 kernel**, please follow the steps below to restore replication functionality and avoid disruptions:
 
 **Note**: All these steps need to be run each time you reboot your source VM to ensure that the driver loads correctly after a VM reboot.
 
@@ -44,7 +44,7 @@ If you have already upgraded your Virtual Machines (VMs) with **Azure Site Recov
   /usr/local/ASR/Vx/bin/start
   ```
 
-If you are planning to replicate a new Virtual Machine running **RHEL 8.4** with **kernel version 4.18.0-305.148.1.el8_4** or later," please followthe steps below to ensure successful replication with **Azure Site Recovery** (ASR):
+**Case B:** If you are planning to replicate a new Virtual Machine running **RHEL 8.4** with **kernel version 4.18.0-305.148.1.el8_4** or later, please follow the steps below to ensure successful replication with **Azure Site Recovery** (ASR):
 
 **Note**: All these steps need to be run each time you reboot your source VM to ensure that the driver loads correctly after a VM reboot.
 
