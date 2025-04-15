@@ -5,6 +5,11 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+if [ ! -e /usr/local/ASR/Vx/etc/RcmProtectionState.json ]; then
+    echo "Protection state healthy."
+    exit 0
+fi
+
 /usr/local/ASR/Vx/bin/stop
 
 rm /usr/local/ASR/Vx/etc/RcmProtectionState.json 
