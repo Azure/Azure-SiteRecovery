@@ -1,6 +1,6 @@
 # Announcement
 
-For customers whose replication is impacted due to issue <>, please follow the steps below to avoid replication breakage and ensure uninterrupted ASR functionality:
+For customers whose replication is impacted due to issue with tracking id 5NFG-PXG, please follow the steps below to avoid replication breakage and ensure uninterrupted ASR functionality:
 
 # Execution Details
 
@@ -25,7 +25,9 @@ When the replication of the VM is critical, to resume the replication in Azure t
   
 2. Windows
 > Login to the replicating VM with administrator account
+
 > Open a command prompt with administrator privileges
+
 > Stop the mobility agent service
   ```
   sc stop svagents
