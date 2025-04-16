@@ -2,18 +2,16 @@
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "Please run this script as root."
-    exit 1
-
-    exit 1
+
+fi
 
 if [ ! -e /usr/local/ASR/Vx/etc/RcmProtectionState.json ]; then
     echo "Protection state healthy."
-    exit 0
-    exit 0
-fi
+if [ ! -e /usr/local/ASR/Vx/etc/RcmProtectionState.json ]; then
 
+    echo "Protection state healthy."
+rm -f /usr/local/ASR/Vx/etc/RcmProtectionState.json
 
-rm -f /usr/local/ASR/Vx/etc/RcmProtectionState.json
 fi
 /usr/local/ASR/Vx/bin/start
 
