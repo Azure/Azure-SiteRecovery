@@ -92,10 +92,7 @@ DRIVERS=(
     ["DEBIAN12"]="https://aka.ms/DriversPackage_DEBIAN12"
     ["SLES15"]="https://aka.ms/DriversPackage_SLES15"
     ["RHEL8"]="https://aka.ms/DriversPackage_RHEL8"
-<<<<<<< HEAD
-=======
     ["RHEL9"]="https://aka.ms/DriversPackage_RHEL9"
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
 )
 
 module_load_log_file=$INSTALL_LOGFILE
@@ -138,11 +135,7 @@ is_TrustedLaunch()
 
 # FUNCTION to get the driver directory
 get_driver_directory_for_sles()
-<<<<<<< HEAD
-{    
-=======
 {
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
     local DEPLOY_DIR=$drivers_file_dir
 
     # set default value to unsigned driver directory
@@ -161,22 +154,14 @@ get_driver_directory_for_sles()
             if [ "$IS_TVM" = "true" ]; then
                 # For TVM VMs, we always load signed driver
                 trace_log_message -q "Loading signed driver from drivers dir for SLES15-64 on Azure TVM"
-<<<<<<< HEAD
-                driver="${DEPLOY_DIR}/Signed"                
-=======
                 driver="${DEPLOY_DIR}/Signed"
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
             else
                 trace_log_message -q "Loading from drivers_unsigned dir for SLES15-64 on Azure non-TVM"
                 driver="${DEPLOY_DIR}/UnSigned"
             fi
         fi
     fi
-<<<<<<< HEAD
-    echo "${driver}" # return the driver directory 
-=======
     echo "${driver}" # return the driver directory
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
 }
 
 copy_rhel9_drivers()
@@ -195,11 +180,8 @@ copy_rhel9_drivers()
     RHEL9_KMV_V3_1="8"
     RHEL9_KMV_V3_2="18"
     RHEL9_KMV_V4="427"
-<<<<<<< HEAD
-=======
     RHEL9_KMV_V5="503"
     RHEL9_KMV_V6="570"
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
 
     KERNEL_MINOR_VERSION=`echo "$k_dir" | cut -d"-" -f2 | cut -d"." -f1`
     KERNEL_COPY_VERSION=""
@@ -234,10 +216,6 @@ copy_rhel9_drivers()
             fi
             KERNEL_COPY_VERSION="$RHEL9_KMV_V3.$KERNEL_UPDATE_VERSION"
         ;;
-<<<<<<< HEAD
-        *)
-            KERNEL_COPY_VERSION="$RHEL9_KMV_V4"
-=======
         $RHEL9_KMV_V4)
             KERNEL_COPY_VERSION=$RHEL9_KMV_V4
         ;;
@@ -246,7 +224,6 @@ copy_rhel9_drivers()
         ;;
 		*)
             KERNEL_COPY_VERSION=$RHEL9_KMV_V6
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
         ;;
     esac
 
@@ -433,13 +410,9 @@ copy_driver_file()
     else
         local driver_dir_path=$drivers_file_dir
         if [ "${OS}" = "SLES12-64" -o "${OS}" = "SLES15-64" ]; then
-<<<<<<< HEAD
-            driver_dir_path=$(get_driver_directory_for_sles)            
-=======
             driver_dir_path=$(get_driver_directory_for_sles)
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
         fi
-
+        driver_dir_path=$(get_driver_directory_for_sles)
         if [ -f $driver_dir_path/involflt.ko.${ker_ver} ]; then
             trace_log_message -q "Copying $driver_dir_path/involflt.ko.${ker_ver} to ${k_dir}"
             cp -f $driver_dir_path/involflt.ko.${ker_ver} ${k_dir}/involflt.ko
@@ -455,11 +428,7 @@ stop_agent_service()
 {
     if [ -z "$GREENFIELD" ]; then
         $INSTALL_DIR/bin/stop >> ${INSTALL_LOGFILE} 2>&1
-<<<<<<< HEAD
-    fi    
-=======
     fi
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
 }
 
 start_agent_service()
@@ -491,11 +460,7 @@ load_driver()
     if [ "${OS}" = "SLES12-64" -o "${OS}" = "SLES15-64" ]; then
 	    modprobe -vs involflt --allow-unsupported >> ${INSTALL_LOGFILE} 2>&1
 	else
-<<<<<<< HEAD
-        modprobe -vs involflt >> ${INSTALL_LOGFILE} 2>&1	
-=======
         modprobe -vs involflt >> ${INSTALL_LOGFILE} 2>&1
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
     fi
 
     if lsmod | grep -iq involflt; then
@@ -517,32 +482,19 @@ load_driver()
     # Ensure that we regenerate initrd to persist the driver across reboots
     if [ -z "$GREENFIELD" ]; then
         trace_log_message -q "Regenerating initrd..."
-<<<<<<< HEAD
-        $INSTALL_DIR/scripts/initrd/install.sh regenerate $ker_ver >> /var/log/InMage_drivers.log        
-    fi    
-}
-
-# Function to detect OS and download driver
-download_driver() 
-=======
         $INSTALL_DIR/scripts/initrd/install.sh regenerate $ker_ver >> /var/log/InMage_drivers.log
     fi
 }
 
 # Function to detect OS and download driver
 download_driver()
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
 {
     if [ -d "$drivers_file_dir" ]; then
         trace_log_message -q "$drivers_file_dir already exists, hence not proceeding with the download."
         return 0
     fi
 
-<<<<<<< HEAD
-    local OS_VERSION=${OS}    
-=======
     local OS_VERSION=${OS}
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
 
     case "$OS_VERSION" in
         *"UBUNTU-18.04-64"*) OS_KEY="UBUNTU18" ;;
@@ -553,10 +505,7 @@ download_driver()
         *"DEBIAN12-64"*) OS_KEY="DEBIAN12" ;;
         *"SLES15-64"*) OS_KEY="SLES15" ;;
         *"RHEL8-64"*) OS_KEY="RHEL8" ;;
-<<<<<<< HEAD
-=======
         *"RHEL9-64"*) OS_KEY="RHEL9" ;;
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
         *) echo "Unsupported OS"; return 1 ;;
     esac
 
@@ -564,11 +513,7 @@ download_driver()
     trace_log_message -q "Detected OS: $OS_KEY"
     trace_log_message -q "Downloading from: $URL"
 
-<<<<<<< HEAD
-    # Download the driver package and extract it. 
-=======
     # Download the driver package and extract it.
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
     # Purposely not logging the download progress as it may pollute the logs
     wget -O "${OS_KEY}_drivers.tar.gz" "$URL"
     if [ $? -ne 0 ]; then
@@ -588,8 +533,4 @@ trace_log_message -q  "----------------------------"
 download_driver || exit $?
 stop_agent_service || exit $?
 load_driver || exit $?
-<<<<<<< HEAD
 start_agent_service || exit $?
-=======
-start_agent_service || exit $?
->>>>>>> 956a0d44b5a7ad816366c80692d2336b5c588dab
