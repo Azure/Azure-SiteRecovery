@@ -412,7 +412,7 @@ copy_driver_file()
         if [ "${OS}" = "SLES12-64" -o "${OS}" = "SLES15-64" ]; then
             driver_dir_path=$(get_driver_directory_for_sles)
         fi
-        
+
         if [ -f $driver_dir_path/involflt.ko.${ker_ver} ]; then
             trace_log_message -q "Copying $driver_dir_path/involflt.ko.${ker_ver} to ${k_dir}"
             cp -f $driver_dir_path/involflt.ko.${ker_ver} ${k_dir}/involflt.ko
