@@ -35,6 +35,37 @@ The following sections contain the latest ASR Mobility Agent for MS Windows and 
 - [UBUNTU-24.04-64][UBUNTU-24.04-64]
 - [Windows][Windows]
 
+### Version 9.64
+
+- [DEBIAN10-64][DEBIAN10-64-964]
+- [DEBIAN11-64][DEBIAN11-64-964]
+- [DEBIAN12-64][DEBIAN12-64-964]
+- [DEBIAN7-64][DEBIAN7-64-964]
+- [DEBIAN8-64][DEBIAN8-64-964]
+- [DEBIAN9-64][DEBIAN9-64-964]
+- [OL6-64][OL6-64-964]
+- [OL7-64][OL7-64-964]
+- [OL8-64][OL8-64-964]
+- [OL9-64][OL9-64-964]
+- [RHEL5-64][RHEL5-64-964]
+- [RHEL6-64][RHEL6-64-964]
+- [RHEL7-64][RHEL7-64-964]
+- [RHEL8-64][RHEL8-64-964]
+- [RHEL9-64][RHEL9-64-964]
+- [SLES11-SP3-64][SLES11-SP3-64-964]
+- [SLES11-SP4-64][SLES11-SP4-64-964]
+- [SLES12-64][SLES12-64-964]
+- [SLES15-64][SLES15-64-964]
+- [UBUNTU-14.04-64][UBUNTU-14.04-64-964]
+- [UBUNTU-16.04-64][UBUNTU-16.04-64-964]
+- [UBUNTU-18.04-64][UBUNTU-18.04-64-964]
+- [UBUNTU-20.04-64][UBUNTU-20.04-64-964]
+- [UBUNTU-22.04-64][UBUNTU-22.04-64-964]
+- [UBUNTU-24.04-64][UBUNTU-24.04-64-964]
+- [Windows][Windows-964]
+
+
+
 ## Conclusion
 Please refer to the installation instructions on how to configure Mobility Agent for the on-premise to Azure scenario.
 
@@ -68,3 +99,31 @@ Please refer to the installation instructions on how to configure Mobility Agent
 [UBUNTU-22.04-64]: https://download.microsoft.com/download/5038afce-07e3-40cd-b124-4161dd3bd8ea/Microsoft-ASR_UA_9.65.0.0_UBUNTU-22.04-64_GA_23Apr2025_release.tar.gz
 [UBUNTU-24.04-64]: https://download.microsoft.com/download/5038afce-07e3-40cd-b124-4161dd3bd8ea/Microsoft-ASR_UA_9.65.0.0_UBUNTU-24.04-64_GA_23Apr2025_release.tar.gz
 [Windows]: https://download.microsoft.com/download/5038afce-07e3-40cd-b124-4161dd3bd8ea/Microsoft-ASR_UA_9.65.0.0_Windows_GA_23Apr2025_release.exe
+
+
+[DEBIAN10-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_DEBIAN10-64_GA_11Mar2025_release.tar.gz
+[DEBIAN11-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_DEBIAN11-64_GA_11Mar2025_release.tar.gz
+[DEBIAN12-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_DEBIAN12-64_GA_11Mar2025_release.tar.gz
+[DEBIAN7-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_DEBIAN7-64_GA_11Mar2025_release.tar.gz
+[DEBIAN8-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_DEBIAN8-64_GA_11Mar2025_release.tar.gz
+[DEBIAN9-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_DEBIAN9-64_GA_11Mar2025_release.tar.gz
+[OL6-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_OL6-64_GA_11Mar2025_release.tar.gz
+[OL7-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_OL7-64_GA_11Mar2025_release.tar.gz
+[OL8-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_OL8-64_GA_11Mar2025_release.tar.gz
+[OL9-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_OL9-64_GA_11Mar2025_release.tar.gz
+[RHEL5-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_RHEL5-64_GA_11Mar2025_release.tar.gz
+[RHEL6-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_RHEL6-64_GA_11Mar2025_release.tar.gz
+[RHEL7-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_RHEL7-64_GA_11Mar2025_release.tar.gz
+[RHEL8-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_RHEL8-64_GA_11Mar2025_release.tar.gz
+[RHEL9-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_RHEL9-64_GA_11Mar2025_release.tar.gz
+[SLES11-SP3-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_SLES11-SP3-64_GA_11Mar2025_release.tar.gz
+[SLES11-SP4-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_SLES11-SP4-64_GA_11Mar2025_release.tar.gz
+[SLES12-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_SLES12-64_GA_11Mar2025_release.tar.gz
+[SLES15-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_SLES15-64_GA_11Mar2025_release.tar.gz
+[UBUNTU-14.04-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_UBUNTU-14.04-64_GA_11Mar2025_release.tar.gz
+[UBUNTU-16.04-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_UBUNTU-16.04-64_GA_11Mar2025_release.tar.gz
+[UBUNTU-18.04-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_UBUNTU-18.04-64_GA_11Mar2025_release.tar.gz
+[UBUNTU-20.04-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_UBUNTU-20.04-64_GA_11Mar2025_release.tar.gz
+[UBUNTU-22.04-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_UBUNTU-22.04-64_GA_11Mar2025_release.tar.gz
+[UBUNTU-24.04-64-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_UBUNTU-24.04-64_GA_11Mar2025_release.tar.gz
+[Windows-964]: https://download.microsoft.com/download/59d9e555-d0b1-46d5-b70f-0243bb60a85c/Microsoft-ASR_UA_9.64.7374.1_Windows_GA_11Mar2025_release.exe
