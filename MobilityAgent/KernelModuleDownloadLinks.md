@@ -21,6 +21,7 @@ Each link is unique for a Linux distro and it is a tar.gz file:
 - [Debian 11](https://aka.ms/DriversPackage_DEBIAN11)
 - [Debian 12](https://aka.ms/DriversPackage_DEBIAN12)
 - [RHEL 8](https://aka.ms/DriversPackage_RHEL8)
+- [RHEL 9](https://aka.ms/DriversPackage_RHEL9)
 - [SLES 15](https://aka.ms/DriversPackage_SLES15)
 - [Ubuntu 18](https://aka.ms/DriversPackage_UBUNTU18)
 - [Ubuntu 20](https://aka.ms/DriversPackage_UBUNTU20)
