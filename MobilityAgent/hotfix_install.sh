@@ -93,6 +93,10 @@ DRIVERS=(
     ["SLES15"]="https://aka.ms/DriversPackage_SLES15"
     ["RHEL8"]="https://aka.ms/DriversPackage_RHEL8"
     ["RHEL9"]="https://aka.ms/DriversPackage_RHEL9"
+    ["RHEL10"]="https://aka.ms/DriversPackage_RHEL10"
+    ["OL8"]="https://aka.ms/DriversPackage_OL8"
+    ["OL9"]="https://aka.ms/DriversPackage_OL9"
+    ["OL10"]="https://aka.ms/DriversPackage_OL10"
 )
 
 module_load_log_file=$INSTALL_LOGFILE
