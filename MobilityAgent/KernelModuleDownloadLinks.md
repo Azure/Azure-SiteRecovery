@@ -2,26 +2,23 @@
 
 ## Introduction
 
-This document contains instructions on how to download and install ASR Mobility Agent Kernel Module to a Linux machine where the kernel has been upgraded to a newer version that is not supported by the current Mobility Agent version.
+This document provides instructions to download and install the ASR Mobility Agent Kernel Module on a Linux machine where the kernel has been upgraded to a version not supported by the current Mobility Agent.
 
-ASR has enhanced the new kernel support by providing the ASR Mobility Agent kernel module required to support new kernel on Microsoft Download Center (DLC). It requires customer to follow few manual steps to install the ASR kernel module.
+ASR now supports new kernels by providing the required kernel module via the Microsoft Download Center (DLC). Customers must follow a few manual steps to install the ASR kernel module.
 
 ## Scenarios
 
-1. A customer has a protected machine that needs to upgrade to new kernel. But the installed ASR Mobility Agent version doesn't support it.
+1. **Upgrading a protected machine to a new kernel:**  
+   If you upgrade a protected machine to a kernel not supported by the installed ASR Mobility Agent, replication will become critical and show the following error:
 
-If users upgrade their protected machines to the latest released kernels which are not supported by the installed Source Agent build, replication will turn critical with below error message:
+   > *The kernel version of the running operating system kernel on the source machine is not supported on the version of the mobility service installed on the source machine.*
 
-*The kernel version of the running operating system kernel on the source machine is not supported on the version of the mobility service installed on the source machine.*
+2. **Enabling replication on a machine with an unsupported kernel:**  
+   Enable Replication (ER) will fail with a message indicating the OS kernel is not supported.
 
-2. A customer wants to enable replication on a machine that has kernel that is not supported by the latest release ASR Mobility Agent version.
+## Download Links
 
-In this case Enable Replication (ER) fails with a message that the OS kernel is not supported.
-
-## Download links
-
-Each link is unique for a Linux distro and it is a tar.gz file.
-
+Each link is unique for a Linux distribution and points to a `.tar.gz` file.
 
 - [Debian 11](https://aka.ms/DriversPackage_DEBIAN11)
 - [Debian 12](https://aka.ms/DriversPackage_DEBIAN12)
@@ -33,58 +30,74 @@ Each link is unique for a Linux distro and it is a tar.gz file.
 - [Ubuntu 22](https://aka.ms/DriversPackage_UBUNTU22)
 - [Ubuntu 24](https://aka.ms/DriversPackage_UBUNTU24)
 
-## Install instructions
+## Installation Instructions
 
+Follow these steps to install the kernel module:
 
-Use the following steps to install the kernel module on the machine.
+### 1. Prepare the Machine
 
-1. Login to the machine as root user.
+- Log in as the root user.
+- Create a directory for the driver package.
 
-2. Create a directory to download the driver package.
+    ```bash
+    # mkdir /root/asr-drivers
+    # cd /root/asr-drivers
+    ```
 
-    `# mkdir /root/asr-drivers`
+### 2. Download the Driver Package
 
-    `# cd /root/asr-drivers`
+#### If the machine has internet access, skip this step and proceed to Step 3.
 
-3. In case the machine does not have internet access, download the files on a different machine and copy them to the impacted machine.
+#### If the machine does not have internet access:
 
-    a. For example, to download the driver package for Ubuntu 20, run the below command.
+- Download the driver package on a different machine and transfer it to the impacted machine.
+- For example, download the package for Ubuntu 20 and copy it to the impacted machine:
 
-   `# wget https://aka.ms/DriversPackage_UBUNTU20 -O DriversPackage_UBUNTU20.tar.gz`
+    ```bash
+    # wget https://aka.ms/DriversPackage_UBUNTU20 -O DriversPackage_UBUNTU20.tar.gz
+    # scp DriversPackage_UBUNTU20.tar.gz user@impacted_machine:/root/asr-drivers/
+    ```
 
-    b. Download the below two scripts from the ASR GitHub repository.
+### 3. Download the Installation Scripts
 
-    `# wget https://github.com/Azure/Azure-SiteRecovery/blob/main/MobilityAgent/hotfix_install.sh`
+- Download the following scripts from the ASR GitHub repository:
 
-    `# wget https://github.com/Azure/Azure-SiteRecovery/blob/main/MobilityAgent/OS_details.sh`
+    ```bash
+    # wget https://github.com/Azure/Azure-SiteRecovery/blob/main/MobilityAgent/hotfix_install.sh
+    # wget https://github.com/Azure/Azure-SiteRecovery/blob/main/MobilityAgent/OS_details.sh
+    ```
 
-    c. Copy the files to the impacted machine using scp or any other method.
+- If the machine does not have internet access, download these scripts on a different machine and transfer them to the impacted machine.
 
-    d. Make sure the script files have execute permissions for user root.
+### 4. Set Permissions
 
-    `# chmod +x hotfix_install.sh OS_details.sh`
+- Ensure the script files have execute permissions for the root user:
 
-    e. Place the driver package in a directory on the impacted machine (e.g. /root/asr-drivers/).
+    ```bash
+    # chmod +x hotfix_install.sh OS_details.sh
+    ```
 
-    f. Extract the driver package on the impacted machine.
-        `# tar -xzvf <driver-package-filename>.tar.gz -C /root/asr-drivers/`
+### 5. Extract the Driver Package for machines without internet access
 
-4. If the machine has internet access, you can directly download the script files on the impacted machine. The script will download the driver package required for the OS distribution and version.
+- Extract the downloaded driver package:
 
-    a. Download the below two scripts from the ASR GitHub repository.
-     
-    `# wget https://github.com/Azure/Azure-SiteRecovery/blob/main/MobilityAgent/hotfix_install.sh`
+    ```bash
+    # tar -xzvf <driver-package-filename>.tar.gz -C /root/asr-drivers/
+    ```
 
-    `# wget https://github.com/Azure/Azure-SiteRecovery/blob/main/MobilityAgent/OS_details.sh`
+### 6. Install the Kernel Module
 
-    b. Make sure the script files have execute permissions for user root.
+- Run the installation script to install the required kernel module. On machines with internet access, the script will automatically download the required driver package and installs it:
 
-    `# chmod +x hotfix_install.sh OS_details.sh`
+    ```bash
+    # ./hotfix_install.sh /root/asr-drivers/
+    ```
 
-5. Run hotfix_install.sh to install the required kernel module.
+### 7. Post-Installation
 
-    Usage: ./hotfix_install.sh < path to dir where drivers package is downloaded >
+- After successful completion, the ASR kernel module is installed.
+- You can now enable replication for new protections.
+- For existing protections, replication will automatically resume.
 
-    `# ./hotfix_install.sh /root/asr-drivers/`
+---
 
-6. Once the script completes successfully, the ASR kernel module is installed on the machine. You can now Enable Replication (ER) for new protections. For existing protections, the replication will automatically resume.
