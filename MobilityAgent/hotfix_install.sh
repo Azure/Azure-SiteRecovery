@@ -49,6 +49,31 @@ trace_log_message()
     fi
 }
 
+#
+# Function Name: Detect_Platform
+#
+# Description:
+#    This function will detect the VM platform (Azure/VmWare)
+#
+# Parameters:None
+#
+# Return Value:
+#
+# Exceptions:None
+#
+Detect_Platform()
+{
+    trace_log_message -q "Detecting VM Platform."
+    tag=$(cat /sys/devices/virtual/dmi/id/chassis_asset_tag 2>/dev/null)
+    trace_log_message -q "dmi chassis asset tag = $tag"
+    if [ "$tag" = "7783-7084-3265-9085-8269-3286-77" ] ; then
+        HW_PLATFORM="Azure"
+    else
+        HW_PLATFORM="VmWare"
+    fi
+    trace_log_message -q "Platform detected by installer: ${HW_PLATFORM}"
+}
+
 # Get the drivers install dir root path
 test_root_dir=$1
 if [ -z "$test_root_dir" ]; then
@@ -60,19 +85,27 @@ VX_VERSION_FILE="/usr/local/.vx_version"
 INSTALL_DIR=$(grep ^INSTALLATION_DIR $VX_VERSION_FILE | cut -d"=" -f2 | tr -d " ")
 if [ -z "$INSTALL_DIR" ]; then
     GREENFIELD=1
-    trace_log_message "Please provide the ASR install directory path (example: /usr/local/ASR/Vx)"
-    exit 1
+    trace_log_message "ASR install directory path not found, considering fresh replication."
+else
+    GREENFIELD=0
+    trace_log_message "ASR install directory path found: $INSTALL_DIR"  
 fi
 
-trace_log_message "ASR install directory path: $INSTALL_DIR"
-
 # Get the platform type
-DRSCOUT_PLATFORM=$(grep ^VmPlatform ${INSTALL_DIR}/etc/drscout.conf | cut -d"=" -f2 | tr -d " ")
-DrScout_Platform=$(tr [A-Z] [a-z] <<<$DRSCOUT_PLATFORM)
-VM_PLATFORM=`echo $DrScout_Platform | tr -d " "`
-if [ -z "$VM_PLATFORM" ]; then
-    trace_log_message "Please provide the VM platform - VmWare or Azure"
-    exit 1
+
+if [ -z "$GREENFIELD" ]; then
+    DRSCOUT_PLATFORM=$(grep ^VmPlatform ${INSTALL_DIR}/etc/drscout.conf | cut -d"=" -f2 | tr -d " ")
+    DrScout_Platform=$(tr [A-Z] [a-z] <<<$DRSCOUT_PLATFORM)
+    VM_PLATFORM=`echo $DrScout_Platform | tr -d " "`
+    if [ -z "$VM_PLATFORM" ]; then
+        trace_log_message "Please provide the VM platform - VmWare or Azure"
+        exit 1
+    fi
+else
+    trace_log_message "Detecting VM platform for greenfield installation..."
+    Detect_Platform
+    VM_PLATFORM=$HW_PLATFORM
+    trace_log_message "Platform detection completed. Assigned VM_PLATFORM: $VM_PLATFORM"
 fi
 
 trace_log_message "VM platform: $VM_PLATFORM"
@@ -93,10 +126,6 @@ DRIVERS=(
     ["SLES15"]="https://aka.ms/DriversPackage_SLES15"
     ["RHEL8"]="https://aka.ms/DriversPackage_RHEL8"
     ["RHEL9"]="https://aka.ms/DriversPackage_RHEL9"
-    ["RHEL10"]="https://aka.ms/DriversPackage_RHEL10"
-    ["OL8"]="https://aka.ms/DriversPackage_OL8"
-    ["OL9"]="https://aka.ms/DriversPackage_OL9"
-    ["OL10"]="https://aka.ms/DriversPackage_OL10"
 )
 
 module_load_log_file=$INSTALL_LOGFILE
@@ -136,6 +165,7 @@ is_TrustedLaunch()
         echo "false"
     fi
 }
+
 
 # FUNCTION to get the driver directory
 get_driver_directory_for_sles()
@@ -294,7 +324,7 @@ copy_rhel8_drivers()
             KERNEL_COPY_VERSION=$RHEL8_KMV_V1
         ;;
         $RHEL8_KMV_V4)
-            is_supported_rhel8_kernel $K_VER 30 1
+            is_supported_rhel8_kernel $K_VER 3 1
             if [ $? -eq "0" ]; then
                 is_supported_rhel8_kernel $K_VER 148 1
 				if [ $? -eq 0 ]; then
@@ -305,7 +335,7 @@ copy_rhel8_drivers()
             fi
         ;;
         $RHEL8_KMV_V5)
-            is_supported_rhel8_kernel $K_VER 5 1
+            is_supported_rhel8_kernel $K_VER 2 1
             if [ $? -eq "0" ]; then
                 KERNEL_COPY_VERSION=$RHEL8_KMV_V5
             fi
