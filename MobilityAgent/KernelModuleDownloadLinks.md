@@ -28,9 +28,13 @@ The supported kernel versions are listed below as per the replication scenario a
 
 Please note that the supported kernel modules versions are compatible with the latest Mobility Agent version only. In case the Mobility Agent version is lower than the latest kernel module version, please upgrade the Mobility Agent to the latest version before installing the kernel module.
 
+For example, if the latest kernel module version is 9.65 and the installed Mobility Agent version is 9.64, please upgrade the Mobility Agent to version 9.65 before installing the kernel modules of versions on 9.65.
+
+
+
 ## Download Links
 
-Each link is unique for a Linux distribution and points to a `.tar.gz` file. The files contain latest ASR kernel modules for supported kernel versions of that distribution.
+Each link is unique for a Linux distribution and points to a `.tar.gz` file. These links point to packages containing latest kernel modules and are compatible with the latest Mobility Agent version.
 
 
 - [Debian 11](https://aka.ms/DriversPackage_DEBIAN11)
