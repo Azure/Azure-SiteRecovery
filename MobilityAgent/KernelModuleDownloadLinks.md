@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document provides instructions to download and install the ASR Mobility Agent Kernel Module on a Linux machine where the kernel has been upgraded to a version not supported by the current Mobility Agent.
+This document provides instructions to download and install the ASR Mobility Agent Kernel Module on a Linux machine where the kernel has been upgraded to a version not supported by the latest Mobility Agent.
 
 ASR now supports new kernels by providing the required kernel module via the Microsoft Download Center (DLC). Customers must follow a few manual steps to install the ASR kernel module.
 
@@ -16,9 +16,22 @@ ASR now supports new kernels by providing the required kernel module via the Mic
 2. **Enabling replication on a machine with an unsupported kernel:**  
    Enable Replication (ER) will fail with a message indicating the OS kernel is not supported.
 
+   > *9.xx version of mobility service doesn't support the operating system kernel version < Y > running on the source machine. Please refer the list of operating systems supported by Azure Site Recovery : https://aka.ms/a2a_supported_linux_os_versions*
+
+## Supported kernel versions
+
+The supported kernel versions are listed below as per the replication scenario and the kernel module release version.
+
+- [Azure To Azure](https://github.com/Azure/Azure-SiteRecovery/tree/main/MobilityAgent/AzureToAzure/SupportedKernels)
+
+- [Onprem to Azure](https://github.com/Azure/Azure-SiteRecovery/tree/main/MobilityAgent/OnPremiseToAzure/SupportedKernels)
+
+Please note that the supported kernel modules versions are compatible with the latest Mobility Agent version only. In case the Mobility Agent version is lower than the latest kernel module version, please upgrade the Mobility Agent to the latest version before installing the kernel module.
+
 ## Download Links
 
-Each link is unique for a Linux distribution and points to a `.tar.gz` file.
+Each link is unique for a Linux distribution and points to a `.tar.gz` file. The files contain latest ASR kernel modules for supported kernel versions of that distribution.
+
 
 - [Debian 11](https://aka.ms/DriversPackage_DEBIAN11)
 - [Debian 12](https://aka.ms/DriversPackage_DEBIAN12)
