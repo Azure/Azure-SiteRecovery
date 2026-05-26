@@ -216,6 +216,7 @@ copy_rhel9_drivers()
     RHEL9_KMV_V4="427"
     RHEL9_KMV_V5="503"
     RHEL9_KMV_V6="570"
+    RHEL9_KMV_V7="611"
 
     KERNEL_MINOR_VERSION=`echo "$k_dir" | cut -d"-" -f2 | cut -d"." -f1`
     KERNEL_COPY_VERSION=""
@@ -256,8 +257,11 @@ copy_rhel9_drivers()
         $RHEL9_KMV_V5)
             KERNEL_COPY_VERSION=$RHEL9_KMV_V5
         ;;
-		*)
-            KERNEL_COPY_VERSION=$RHEL9_KMV_V6
+        $RHEL9_KMV_V6)
+            KERNEL_COPY_VERSION="$RHEL9_KMV_V6"
+        ;;
+        *)
+            KERNEL_COPY_VERSION="$RHEL9_KMV_V7"
         ;;
     esac
 
@@ -458,10 +462,82 @@ copy_driver_file()
     fi
 }
 
+DI_FAULTY_DRIVER_DISTRO="UBUNTU-18.04-64 UBUNTU-20.04-64 UBUNTU-22.04-64 UBUNTU-24.04-64 RHEL8-64 RHEL9-64 SLES15-64 DEBIAN11-64 DEBIAN12-64"
+
+check_di_faulty_driver()
+{
+    trace_log_message -q "ENTERED $FUNCNAME"
+    local ret=0
+
+    if [ -e $VX_VERSION_FILE ]; then
+        trace_log_message -q "$VX_VERSION_FILE is present"
+        local inst_dir=$(grep ^INSTALLATION_DIR $VX_VERSION_FILE | cut -d"=" -f2 | tr -d " ")
+        local inm_dmit_path="${inst_dir}/bin/inm_dmit"
+
+        if [ -x "$inm_dmit_path" ]; then
+            if echo "$DI_FAULTY_DRIVER_DISTRO" | grep -qw "$OS"; then
+                local product_version=$($inm_dmit_path --op=get_driver_version 2>/dev/null | grep "Product Version" | sed 's/[^0-9,]//g' | tr -d ' ')
+                trace_log_message -q "OS : $OS, kernel version : $(uname -r), Product Version : $product_version"
+                local pv_major=$(echo "$product_version" | cut -d',' -f1)
+                local pv_minor=$(echo "$product_version" | cut -d',' -f2)
+                local pv_patch=$(echo "$product_version" | cut -d',' -f3)
+                local pv_build=$(echo "$product_version" | cut -d',' -f4)
+                if [ "$pv_major" = "9" ] && [ "$pv_minor" = "66" ] && [ "$pv_patch" = "1" ]; then
+                    if [ "$pv_build" -ge 7691 ] && [ "$pv_build" -lt 7750 ]; then
+                        trace_log_message -q "Found DI faulty driver in OS : $OS, Product Version : $product_version"
+                        ret=1
+                    fi
+                fi
+            else
+                trace_log_message -q "OS $OS is not in DI faulty driver distro list, skipping check"
+            fi
+        else
+            trace_log_message -q "inm_dmit not found at $inm_dmit_path, skipping DI faulty driver check"
+        fi
+    fi
+
+    trace_log_message -q "EXITED $FUNCNAME"
+    return $ret
+}
+
+remediate_di_faulty_driver()
+{
+    trace_log_message -q "ENTERED $FUNCNAME"
+    local inst_dir=$(grep ^INSTALLATION_DIR $VX_VERSION_FILE | cut -d"=" -f2 | tr -d " ")
+
+    trace_log_message -q "DI faulty driver detected. Stopping agent service."
+    stop_agent_service
+    local stop_ret=$?
+    if [ "$stop_ret" -ne 0 ]; then
+        trace_log_message -q "Failed to stop agent service. Return value : $stop_ret"
+        exit 1
+    fi
+
+    trace_log_message -q "Stopping filtering on all protected disks using inm_dmit --op=stop_flt_all."
+    ${inst_dir}/bin/inm_dmit --op=stop_flt_all >> ${INSTALL_LOGFILE} 2>&1
+    local stop_flt_ret=$?
+    if [ "$stop_flt_ret" -ne 0 ]; then
+        trace_log_message -q "Failed to stop filtering. inm_dmit --op=stop_flt_all return value : $stop_flt_ret"
+        exit 1
+    fi
+
+    trace_log_message -q "Unloading involflt driver module."
+    rmmod involflt >> ${INSTALL_LOGFILE} 2>&1
+    local rmmod_ret=$?
+    if [ "$rmmod_ret" -ne 0 ]; then
+        trace_log_message -q "Failed to unload involflt driver module. rmmod return value : $rmmod_ret"
+        exit 1
+    fi
+
+    trace_log_message -q "DI faulty driver remediation complete. Proceeding with hotfix installation."
+    trace_log_message -q "EXITED $FUNCNAME"
+}
+
 stop_agent_service()
 {
     if [ -z "$GREENFIELD" ]; then
         $INSTALL_DIR/bin/stop >> ${INSTALL_LOGFILE} 2>&1
+        return $?
     fi
 }
 
@@ -469,6 +545,7 @@ start_agent_service()
 {
     if [ -z "$GREENFIELD" ]; then
         $INSTALL_DIR/bin/start >> ${INSTALL_LOGFILE} 2>&1
+        return $?
     fi
 }
 
@@ -564,6 +641,14 @@ download_driver()
 
 trace_log_message -q  "`date`"
 trace_log_message -q  "----------------------------"
+
+if [ "$GREENFIELD" -eq 0 ]; then
+    check_di_faulty_driver
+    if [ "$?" -ne "0" ]; then
+        remediate_di_faulty_driver
+    fi
+fi
+
 download_driver || exit $?
 stop_agent_service || exit $?
 load_driver || exit $?
