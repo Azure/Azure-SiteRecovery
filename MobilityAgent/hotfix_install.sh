@@ -437,11 +437,6 @@ copy_rhel7_drivers()
 
 copy_rhel_drivers()
 {
-    if [ -f ${k_dir}/involflt.ko ]; then
-        trace_log_message -q "involflt.ko already exists in ${k_dir}"
-        return 0
-    fi
-
     if [ "$OS" = "RHEL7-64" -o "$OS" = "OL7-64" ]; then
         copy_rhel7_drivers
     elif [ "$OS" = "RHEL8-64" -o "$OS" = "OL8-64" ]; then
