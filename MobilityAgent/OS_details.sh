@@ -14,11 +14,11 @@ if [ -f /etc/oracle-release ]; then
         if [ `uname -m` = "x86_64" ]; then
             OS="OL8-64"
         fi
-    elif grep -q 'Oracle Linux Server release 9.[0-8]' /etc/oracle-release; then
+    elif grep -q 'Oracle Linux Server release 9.[0-6]' /etc/oracle-release; then
         if [ `uname -m` = "x86_64" ]; then
               OS="OL9-64"
         fi    
-    elif grep -q 'Oracle Linux Server release 10.[0-2]' /etc/oracle-release; then
+    elif grep -q 'Oracle Linux Server release 10.0' /etc/oracle-release; then
         if [ `uname -m` = "x86_64" ]; then
               OS="OL10-64"
         fi    
