@@ -145,10 +145,6 @@ if [ "$GREENFIELD" -eq 0 ]; then
         cp -f "$os_details_file_path" "$INSTALL_DIR/scripts/vCon/OS_details.sh"
         trace_log_message -q "Replaced OS_details.sh in $INSTALL_DIR/scripts/vCon/"
     fi
-    if [ -d "$INSTALL_DIR/scripts/azure" ]; then
-        cp -f "$os_details_file_path" "$INSTALL_DIR/scripts/azure/OS_details_target.sh"
-        trace_log_message -q "Replaced OS_details_target.sh in $INSTALL_DIR/scripts/azure/"
-    fi
 fi
 
 OS=`$os_details_file_path 1`
@@ -513,7 +509,7 @@ copy_driver_file()
     fi
 }
 
-DI_FAULTY_DRIVER_DISTRO="UBUNTU-18.04-64 UBUNTU-20.04-64 UBUNTU-22.04-64 UBUNTU-24.04-64 RHEL8-64 RHEL9-64 RHEL10-64 SLES15-64 DEBIAN11-64 DEBIAN12-64"
+DI_FAULTY_DRIVER_DISTRO="UBUNTU-18.04-64 UBUNTU-20.04-64 UBUNTU-22.04-64 UBUNTU-24.04-64 RHEL8-64 RHEL9-64 SLES15-64 DEBIAN11-64 DEBIAN12-64"
 
 check_di_faulty_driver()
 {
