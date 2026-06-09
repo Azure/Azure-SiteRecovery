@@ -130,15 +130,19 @@ DRIVERS=(
 
 module_load_log_file=$INSTALL_LOGFILE
 
+# Always use OS_details.sh from the downloaded hotfix package (has latest OS support)
+os_details_file_path="$test_root_dir/OS_details.sh"
+if [ ! -f "$os_details_file_path" ]; then
+    trace_log_message "OS_details.sh file not found in the given directory path."
+    exit 1
+fi
+chmod +x "$os_details_file_path"
+
+# In brownfield, replace the old OS_details.sh with the updated one from the hotfix package
 if [ "$GREENFIELD" -eq 0 ]; then
-    # brownfield case
-    os_details_file_path="$INSTALL_DIR/scripts/vCon/OS_details.sh"
-else
-    # greenfield case - new installation
-    os_details_file_path="$test_root_dir/OS_details.sh"
-    if [ ! -f "$os_details_file_path" ]; then
-        trace_log_message "OS_details.sh file not found in the given directory path."
-        exit 1
+    if [ -d "$INSTALL_DIR/scripts/vCon" ]; then
+        cp -f "$os_details_file_path" "$INSTALL_DIR/scripts/vCon/OS_details.sh"
+        trace_log_message -q "Replaced OS_details.sh in $INSTALL_DIR/scripts/vCon/"
     fi
 fi
 
@@ -217,6 +221,7 @@ copy_rhel9_drivers()
     RHEL9_KMV_V5="503"
     RHEL9_KMV_V6="570"
     RHEL9_KMV_V7="611"
+    RHEL9_KMV_V8="687"
 
     KERNEL_MINOR_VERSION=`echo "$k_dir" | cut -d"-" -f2 | cut -d"." -f1`
     KERNEL_COPY_VERSION=""
@@ -260,8 +265,11 @@ copy_rhel9_drivers()
         $RHEL9_KMV_V6)
             KERNEL_COPY_VERSION="$RHEL9_KMV_V6"
         ;;
-        *)
+        $RHEL9_KMV_V7)
             KERNEL_COPY_VERSION="$RHEL9_KMV_V7"
+        ;;
+        *)
+            KERNEL_COPY_VERSION="$RHEL9_KMV_V8"
         ;;
     esac
 
@@ -362,7 +370,7 @@ copy_rhel8_drivers()
     if [ -z $KERNEL_COPY_VERSION ]; then
         trace_log_message -q "Not copying involflt driver to kernel $k_dir"
     else
-        trace_log_message -q "Copying $drivers_file_dir/involflt.ko.${RHEL9_KVL}-${KERNEL_COPY_VERSION} ${k_dir}"
+        trace_log_message -q "Copying $drivers_file_dir/involflt.ko.${RHEL8_KVL}-${KERNEL_COPY_VERSION} ${k_dir}"
         cp -f $drivers_file_dir/involflt.ko.${RHEL8_KVL}-${KERNEL_COPY_VERSION}* ${k_dir}/involflt.ko
         ret=$?
     fi
@@ -392,11 +400,6 @@ copy_rhel7_drivers()
 
 copy_rhel_drivers()
 {
-    if [ -f ${k_dir}/involflt.ko ]; then
-        trace_log_message -q "involflt.ko already exists in ${k_dir}"
-        return 0
-    fi
-
     if [ "$OS" = "RHEL7-64" -o "$OS" = "OL7-64" ]; then
         copy_rhel7_drivers
     elif [ "$OS" = "RHEL8-64" -o "$OS" = "OL8-64" ]; then

@@ -50,10 +50,10 @@ elif [ -f /etc/redhat-release ]; then
 	if [ `uname -m` = "x86_64" ]; then
             OS="RHEL8-64"
         fi
-    elif grep -q 'Red Hat Enterprise Linux release 9.[0-6]' /etc/redhat-release || \
-        grep -q 'CentOS Linux release 9.[0-3]' /etc/redhat-release|| \
-        grep -q 'Rocky Linux release 9.[0-6]' /etc/redhat-release || \
-		grep -q 'AlmaLinux release 9.[0-6]' /etc/redhat-release; then
+    elif grep -q 'Red Hat Enterprise Linux release 9.[0-8]' /etc/redhat-release || \
+        grep -q 'CentOS Linux release 9.[0-8]' /etc/redhat-release || \
+        grep -q 'Rocky Linux release 9.[0-8]' /etc/redhat-release || \
+		grep -q 'AlmaLinux release 9.[0-8]' /etc/redhat-release; then
         if [ `uname -m` = "x86_64" ]; then
             OS="RHEL9-64"
         fi
@@ -143,4 +143,3 @@ if [ $# -gt 0 ]
 then
     echo $OS
 fi
-
