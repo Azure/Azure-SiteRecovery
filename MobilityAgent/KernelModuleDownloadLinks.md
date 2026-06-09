@@ -80,8 +80,8 @@ Follow these steps to install the kernel module:
 - Download the following scripts from the ASR GitHub repository:
 
     ```bash
-    # wget https://github.com/Azure/Azure-SiteRecovery/blob/main/MobilityAgent/hotfix_install.sh
-    # wget https://github.com/Azure/Azure-SiteRecovery/blob/main/MobilityAgent/OS_details.sh
+    # wget https://github.com/Azure/Azure-SiteRecovery/blob/main/MobilityAgent/hotfix_install.sh?raw=true
+    # wget https://github.com/Azure/Azure-SiteRecovery/blob/main/MobilityAgent/OS_details.sh?raw=true
     ```
 
 - If the machine does not have internet access, download these scripts on a different machine and transfer them to the impacted machine.
