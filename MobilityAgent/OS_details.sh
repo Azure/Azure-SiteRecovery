@@ -57,9 +57,9 @@ elif [ -f /etc/redhat-release ]; then
         if [ `uname -m` = "x86_64" ]; then
             OS="RHEL9-64"
         fi
-    elif grep -q 'Red Hat Enterprise Linux release 10.[0-2]' /etc/redhat-release || \
-        grep -q 'Rocky Linux release 10.[0-2]' /etc/redhat-release || \
-		grep -q 'AlmaLinux release 10.[0-2]' /etc/redhat-release; then
+    elif grep -q 'Red Hat Enterprise Linux release 10.0' /etc/redhat-release || \
+        grep -q 'Rocky Linux release 10.0' /etc/redhat-release || \
+		grep -q 'AlmaLinux release 10.0' /etc/redhat-release; then
         if [ `uname -m` = "x86_64" ]; then
             OS="RHEL10-64"
         fi

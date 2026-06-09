@@ -126,7 +126,6 @@ DRIVERS=(
     ["SLES15"]="https://aka.ms/DriversPackage_SLES15"
     ["RHEL8"]="https://aka.ms/DriversPackage_RHEL8"
     ["RHEL9"]="https://aka.ms/DriversPackage_RHEL9"
-    ["RHEL10"]="https://aka.ms/DriversPackage_RHEL10"
 )
 
 module_load_log_file=$INSTALL_LOGFILE
@@ -158,7 +157,6 @@ RHEL6_KVL="2.6.32"
 RHEL7_KVL="3.10.0"
 RHEL8_KVL="4.18.0"
 RHEL9_KVL="5.14.0"
-RHEL10_KVL="6.12.0"
 
 is_TrustedLaunch()
 {
@@ -202,41 +200,6 @@ get_driver_directory_for_sles()
         fi
     fi
     echo "${driver}" # return the driver directory
-}
-
-copy_rhel10_drivers()
-{
-    trace_log_message -q "Kernel dir = $k_dir"
-
-    RHEL10_KMV_V0="55"
-    RHEL10_KMV_V1="124"
-    RHEL10_KMV_V2="211"
-
-    KERNEL_MINOR_VERSION=`echo "$k_dir" | cut -d"-" -f2 | cut -d"." -f1`
-    KERNEL_COPY_VERSION=""
-    local KERNEL_MINOR_VERSION_UPDATE=`echo "$k_dir" | cut -d"-" -f2 | cut -d"." -f2`
-    ret=1
-    case $KERNEL_MINOR_VERSION in
-        $RHEL10_KMV_V0)
-            KERNEL_COPY_VERSION=$RHEL10_KMV_V0
-        ;;
-        $RHEL10_KMV_V1)
-            KERNEL_COPY_VERSION=$RHEL10_KMV_V1
-        ;;
-        *)
-            KERNEL_COPY_VERSION=$RHEL10_KMV_V2
-        ;;
-    esac
-
-    if [ -z $KERNEL_COPY_VERSION ]; then
-        trace_log_message -q "Not copying involflt driver to kernel $k_dir"
-    else
-        trace_log_message -q "Copying $drivers_file_dir/involflt.ko.${RHEL10_KVL}-${KERNEL_COPY_VERSION} ${k_dir}"
-        cp -f $drivers_file_dir/involflt.ko.${RHEL10_KVL}-${KERNEL_COPY_VERSION}* ${k_dir}/involflt.ko
-        ret=$?
-    fi
-
-    return $ret
 }
 
 copy_rhel9_drivers()
@@ -443,8 +406,6 @@ copy_rhel_drivers()
         copy_rhel8_drivers
     elif [ "$OS" = "RHEL9-64" -o "$OS" = "OL9-64" ]; then
         copy_rhel9_drivers
-    elif [ "$OS" = "RHEL10-64" -o "$OS" = "OL10-64" ]; then
-        copy_rhel10_drivers
     else
         cp -f ${DEPLOY_DIR}/bin/involflt.ko.${RHEL6_KVL}*${SEP}${suffix} ${k_dir}/involflt.ko
     fi
@@ -480,7 +441,7 @@ copy_driver_file()
     trace_log_message -q "OS is $OS"
     if echo $OS | grep -q 'RHEL\|SLES11' ; then
         copy_rhel_drivers || return $?
-    elif [ "${OS}" = "OL7-64" -o "${OS}" = "OL8-64" -o "${OS}" = "OL9-64" -o "${OS}" = "OL10-64" ]; then
+    elif [ "${OS}" = "OL7-64" -o "${OS}" = "OL8-64" -o "${OS}" = "OL9-64" ]; then
         if [[ $ker_ver =~ "uek" ]]; then
             #Copy driver for uek kernel
             copy_uek_driver || return $?
@@ -659,7 +620,6 @@ download_driver()
         *"SLES15-64"*) OS_KEY="SLES15" ;;
         *"RHEL8-64"*) OS_KEY="RHEL8" ;;
         *"RHEL9-64"*) OS_KEY="RHEL9" ;;
-        *"RHEL10-64"*) OS_KEY="RHEL10" ;;
         *) echo "Unsupported OS"; return 1 ;;
     esac
 
