@@ -471,9 +471,21 @@ check_di_faulty_driver()
 {
     trace_log_message -q "ENTERED $FUNCNAME"
     local ret=0
+    local min_agent_build=7759
 
     if [ -e $VX_VERSION_FILE ]; then
         trace_log_message -q "$VX_VERSION_FILE is present"
+
+        # Agent version pre-check: build must be >= $min_agent_build
+        local agent_version=$(grep ^VERSION= $VX_VERSION_FILE | cut -d"=" -f2 | tr -d " ")
+        local agent_build=$(echo "$agent_version" | cut -d"." -f4)
+        if [ -z "$agent_build" ] || [ "$agent_build" -lt "$min_agent_build" ]; then
+            trace_log_message -q "Agent version is $agent_version (build ${agent_build:-unknown}), below minimum build $min_agent_build"
+            trace_log_message -q "EXITED $FUNCNAME"
+            return 2
+        fi
+        trace_log_message -q "Agent version check passed: $agent_version (build $agent_build)"
+
         local inst_dir=$(grep ^INSTALLATION_DIR $VX_VERSION_FILE | cut -d"=" -f2 | tr -d " ")
         local inm_dmit_path="${inst_dir}/bin/inm_dmit"
 
@@ -645,25 +657,18 @@ download_driver()
 trace_log_message -q  "`date`"
 trace_log_message -q  "----------------------------"
 
-# --- Pre-check: Agent version must be >= 7759 ---
-MIN_AGENT_BUILD=7759
+# --- Pre-check: Agent version must be >= 7759 and driver must not be faulty ---
 if [ "$GREENFIELD" -eq 0 ]; then
-    AGENT_VERSION=$(grep ^VERSION= $VX_VERSION_FILE | cut -d"=" -f2 | tr -d " ")
-    AGENT_BUILD=$(echo "$AGENT_VERSION" | cut -d"." -f4)
-    if [ -z "$AGENT_BUILD" ] || [ "$AGENT_BUILD" -lt "$MIN_AGENT_BUILD" ]; then
-        trace_log_message "Agent version is $AGENT_VERSION (build ${AGENT_BUILD:-unknown})."
-        trace_log_message "Please upgrade the Mobility Agent to build $MIN_AGENT_BUILD or higher before running this script."
-        exit 1
-    fi
-    trace_log_message -q "Agent version check passed: $AGENT_VERSION (build $AGENT_BUILD)"
-
-    # --- Pre-check: Driver must not be faulty (9.66.1.7691-7749) ---
     check_di_faulty_driver
-    if [ "$?" -ne "0" ]; then
+    check_ret=$?
+    if [ "$check_ret" -eq 2 ]; then
+        trace_log_message "Please upgrade the Mobility Agent to build 7759 or higher before running this script."
+        exit 1
+    elif [ "$check_ret" -ne 0 ]; then
         trace_log_message "Faulty driver detected. Please reboot the machine and run this script again."
         exit 1
     fi
-    trace_log_message -q "Driver version check passed."
+    trace_log_message -q "Agent version and driver checks passed."
 fi
 
 download_driver || exit $?
