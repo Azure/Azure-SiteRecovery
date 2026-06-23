@@ -645,11 +645,25 @@ download_driver()
 trace_log_message -q  "`date`"
 trace_log_message -q  "----------------------------"
 
+# --- Pre-check: Agent version must be >= 7759 ---
+MIN_AGENT_BUILD=7759
 if [ "$GREENFIELD" -eq 0 ]; then
+    AGENT_VERSION=$(grep ^VERSION= $VX_VERSION_FILE | cut -d"=" -f2 | tr -d " ")
+    AGENT_BUILD=$(echo "$AGENT_VERSION" | cut -d"." -f4)
+    if [ -z "$AGENT_BUILD" ] || [ "$AGENT_BUILD" -lt "$MIN_AGENT_BUILD" ]; then
+        trace_log_message "Agent version is $AGENT_VERSION (build ${AGENT_BUILD:-unknown})."
+        trace_log_message "Please upgrade the Mobility Agent to build $MIN_AGENT_BUILD or higher before running this script."
+        exit 1
+    fi
+    trace_log_message -q "Agent version check passed: $AGENT_VERSION (build $AGENT_BUILD)"
+
+    # --- Pre-check: Driver must not be faulty (9.66.1.7691-7749) ---
     check_di_faulty_driver
     if [ "$?" -ne "0" ]; then
-        remediate_di_faulty_driver
+        trace_log_message "Faulty driver detected. Please reboot the machine and run this script again."
+        exit 1
     fi
+    trace_log_message -q "Driver version check passed."
 fi
 
 download_driver || exit $?
