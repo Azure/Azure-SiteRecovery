@@ -515,12 +515,12 @@ check_di_faulty_driver()
     return $ret
 }
 
-remediate_di_faulty_driver()
+trigger_resync_all_disks()
 {
     trace_log_message -q "ENTERED $FUNCNAME"
     local inst_dir=$(grep ^INSTALLATION_DIR $VX_VERSION_FILE | cut -d"=" -f2 | tr -d " ")
 
-    trace_log_message -q "DI faulty driver detected. Stopping agent service."
+    trace_log_message -q "Triggering resync. Stopping agent service."
     stop_agent_service
     local stop_ret=$?
     if [ "$stop_ret" -ne 0 ]; then
@@ -544,7 +544,7 @@ remediate_di_faulty_driver()
         exit 1
     fi
 
-    trace_log_message -q "DI faulty driver remediation complete. Proceeding with hotfix installation."
+    trace_log_message -q "Resync triggered on all protected disks. Proceeding to reload driver and restart agent."
     trace_log_message -q "EXITED $FUNCNAME"
 }
 
@@ -657,7 +657,7 @@ download_driver()
 trace_log_message -q  "`date`"
 trace_log_message -q  "----------------------------"
 
-# --- Pre-check: Agent version must be >= 7759 and driver must not be faulty ---
+# --- Pre-checks: agent version and faulty driver ---
 if [ "$GREENFIELD" -eq 0 ]; then
     check_di_faulty_driver
     check_ret=$?
@@ -668,7 +668,9 @@ if [ "$GREENFIELD" -eq 0 ]; then
         trace_log_message "Faulty driver detected. Please reboot the machine and run this script again."
         exit 1
     fi
-    trace_log_message -q "Agent version and driver checks passed."
+    # Both agent version and driver are as expected -> trigger resync on all disks
+    trace_log_message "Agent version and driver checks passed. Triggering resync on all protected disks."
+    trigger_resync_all_disks
 fi
 
 download_driver || exit $?
