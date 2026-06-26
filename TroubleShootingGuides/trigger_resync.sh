@@ -7,6 +7,10 @@
 #          all protected disks. When filtering is stopped and the agent is
 #          restarted, the replication pipeline initiates a resync.
 #
+# Prerequisites:
+#   - Agent version must be 7759 or higher (otherwise upgrade first)
+#   - Driver must not be a faulty version (otherwise reboot first)
+#
 # Usage:   sudo bash trigger_resync.sh
 #
 # Notes:
@@ -17,6 +21,7 @@
 ###############################################################################
 
 VX_VERSION_FILE="/usr/local/.vx_version"
+MIN_AGENT_BUILD=7759
 
 # Ensure running as root
 if [ "$(id -u)" -ne 0 ]; then
@@ -40,6 +45,41 @@ if [ ! -x "$INM_DMIT" ]; then
     echo "ERROR: inm_dmit binary not found or not executable at ${INM_DMIT}."
     exit 1
 fi
+
+# --- Pre-check 1: Agent version must be >= 7759 ---
+# Build number from BUILD_TAG: RELEASE_9.67.0.0_GA_7789_Apr_30_2026_INMAGE
+AGENT_VERSION=$(grep ^PROD_VERSION $VX_VERSION_FILE | cut -d"=" -f2 | tr -d " ")
+AGENT_BUILD=$(grep -w BUILD_TAG $VX_VERSION_FILE | cut -d'_' -f5)
+if [ -z "$AGENT_BUILD" ] || [ "$AGENT_BUILD" -lt "$MIN_AGENT_BUILD" ]; then
+    echo "ERROR: Agent version is $AGENT_VERSION (build ${AGENT_BUILD:-unknown})."
+    echo "Minimum required build is $MIN_AGENT_BUILD."
+    echo "Please upgrade the Mobility Agent to build $MIN_AGENT_BUILD or higher before running this script."
+    exit 1
+fi
+echo "Agent version check passed: $AGENT_VERSION (build $AGENT_BUILD)"
+
+# --- Pre-check 2: Driver must not be faulty (9.66.1.7691-7749) ---
+DRIVER_VERSION=$(${INM_DMIT} --op=get_driver_version 2>/dev/null | grep "Product Version" | sed 's/[^0-9,]//g' | tr -d ' ')
+if [ -n "$DRIVER_VERSION" ]; then
+    DRV_MAJOR=$(echo "$DRIVER_VERSION" | cut -d',' -f1)
+    DRV_MINOR=$(echo "$DRIVER_VERSION" | cut -d',' -f2)
+    DRV_PATCH=$(echo "$DRIVER_VERSION" | cut -d',' -f3)
+    DRV_BUILD=$(echo "$DRIVER_VERSION" | cut -d',' -f4)
+
+    if [ "$DRV_MAJOR" = "9" ] && [ "$DRV_MINOR" = "66" ] && [ "$DRV_PATCH" = "1" ]; then
+        if [ "$DRV_BUILD" -ge 7691 ] && [ "$DRV_BUILD" -lt 7750 ]; then
+            echo "ERROR: Faulty driver detected (version: $DRV_MAJOR.$DRV_MINOR.$DRV_PATCH.$DRV_BUILD)."
+            echo "Please reboot the machine and run this script again."
+            exit 1
+        fi
+    fi
+    echo "Driver version check passed: $DRV_MAJOR.$DRV_MINOR.$DRV_PATCH.$DRV_BUILD"
+else
+    echo "WARNING: Could not determine driver version. Proceeding anyway."
+fi
+
+# --- Both checks passed, proceed with resync ---
+echo "All pre-checks passed. Triggering resync..."
 
 # Step 1: Stop the agent service (no logging before this)
 ${INSTALL_DIR}/bin/stop 2>&1
@@ -72,6 +112,7 @@ log_message()
 }
 
 log_message "ALWAYS" "trigger_resync.sh: Agent service stopped successfully."
+log_message "ALWAYS" "trigger_resync.sh: Agent version: $AGENT_VERSION, Driver version: $DRV_MAJOR.$DRV_MINOR.$DRV_PATCH.$DRV_BUILD"
 
 # Step 2: Stop filtering on all protected disks (this causes resync)
 log_message "ALWAYS" "trigger_resync.sh: Stopping filtering on all protected disks..."
@@ -84,25 +125,25 @@ fi
 
 if [ "$stop_flt_ret" -eq 0 ]; then
     log_message "ALWAYS" "trigger_resync.sh: Filtering stopped on all disks."
-fi
 
-# Step 3: Verify and cleanup /etc/vxagent/involflt (preserve common/)
-INVOLFLT_DIR="/etc/vxagent/involflt"
-if [ -d "$INVOLFLT_DIR" ]; then
-    remaining_dirs=$(find "$INVOLFLT_DIR" -mindepth 1 -maxdepth 1 -type d ! -name "common" 2>/dev/null)
-    if [ -n "$remaining_dirs" ]; then
-        log_message "ALWAYS" "trigger_resync.sh: Found remaining directories under $INVOLFLT_DIR after stop_flt_all:"
-        echo "$remaining_dirs" | while IFS= read -r dir; do
-            [ -z "$dir" ] && continue
-            log_message "ALWAYS" "trigger_resync.sh: Cleaning up: $dir"
-            rm -rf "$dir"
-        done
-        log_message "ALWAYS" "trigger_resync.sh: Cleanup complete. All disks will resync on next start."
+    # Step 3: Cleanup /etc/vxagent/involflt (preserve common/)
+    INVOLFLT_DIR="/etc/vxagent/involflt"
+    if [ -d "$INVOLFLT_DIR" ]; then
+        remaining_dirs=$(find "$INVOLFLT_DIR" -mindepth 1 -maxdepth 1 -type d ! -name "common" 2>/dev/null)
+        if [ -n "$remaining_dirs" ]; then
+            log_message "ALWAYS" "trigger_resync.sh: Found remaining directories under $INVOLFLT_DIR after stop_flt_all:"
+            echo "$remaining_dirs" | while IFS= read -r dir; do
+                [ -z "$dir" ] && continue
+                log_message "ALWAYS" "trigger_resync.sh: Cleaning up: $dir"
+                rm -rf "$dir"
+            done
+            log_message "ALWAYS" "trigger_resync.sh: Cleanup complete. All disks will resync on next start."
+        else
+            log_message "ALWAYS" "trigger_resync.sh: No remaining directories under $INVOLFLT_DIR (excluding common/). All clean."
+        fi
     else
-        log_message "ALWAYS" "trigger_resync.sh: No remaining directories under $INVOLFLT_DIR (excluding common/). All clean."
+        log_message "ALWAYS" "trigger_resync.sh: $INVOLFLT_DIR not found. Skipping cleanup."
     fi
-else
-    log_message "ALWAYS" "trigger_resync.sh: $INVOLFLT_DIR not found. Skipping cleanup."
 fi
 
 # Step 4: Log protection status for all disks
