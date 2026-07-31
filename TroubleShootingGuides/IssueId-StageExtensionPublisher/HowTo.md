@@ -2,8 +2,6 @@
 
 Follow these steps only if the Azure Site Recovery extension installed on the protected Azure virtual machine (VM) uses the `Microsoft.Azure.SiteRecovery.Stage` publisher.
 
-> **Important:** Disabling replication interrupts protection and may remove existing recovery points. Perform this procedure during an approved maintenance window.
-
 1. In the Azure portal, open the VM and select **Extensions + applications**.
 2. Select each Site Recovery extension and verify that its **Type** contains `Microsoft.Azure.SiteRecovery.Stage`. If it does not, stop and do not perform the remaining steps.
 3. Uninstall the Site Recovery extensions:
