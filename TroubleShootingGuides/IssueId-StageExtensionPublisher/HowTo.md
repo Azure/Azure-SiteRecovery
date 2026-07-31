@@ -9,7 +9,8 @@ Follow these steps only if the Azure Site Recovery extension installed on the pr
    - **Linux:** Select and uninstall both `SiteRecovery-Linux` and `SiteRecovery-Linux<Distro>`, where `<Distro>` identifies the Linux distribution.
 4. Disable Azure Site Recovery replication for the VM from the Recovery Services vault.
 5. Uninstall the Azure Site Recovery Mobility Service from the guest operating system:
-   - **Windows:** In **Control Panel**, select **Programs**, select **Microsoft Azure Site Recovery Mobility Service/Master Target Server**, and then select **Uninstall**. After the uninstall completes, reboot the server.
+   - **Windows:** In **Control Panel**, select **Programs**, select **Microsoft Azure Site Recovery Mobility Service/Master Target Server**, and then select **Uninstall**.
+     After the uninstall completes, reboot the server.
    - **Linux:** Run:
 
      ```sh
