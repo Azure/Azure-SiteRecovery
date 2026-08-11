@@ -258,8 +258,31 @@ Do not run a plain `depmod -a` from `switch_root:/#`; it can target the temporar
 After the VM boots successfully on the older kernel, install the fixed Oracle UEK kernel:
 
 ```sh
-sudo dnf clean all
+sudo dnf clean metadata
+sudo dnf makecache --refresh
+sudo dnf repolist --enabled
+sudo dnf list --showduplicates kernel-uek
 sudo dnf install kernel-uek-5.15.0-322.203.3.5.el8uek.x86_64
+```
+
+Confirm that the enabled repositories include `ol8_UEKR7` and that
+`5.15.0-322.203.3.5.el8uek` appears in the available package list before
+running the installation.
+
+If DNF initially reports that the package is unavailable, retry the metadata
+refresh:
+
+```sh
+sudo dnf clean metadata
+sudo dnf makecache --refresh
+sudo dnf repoquery kernel-uek-5.15.0-322.203.3.5.el8uek.x86_64
+```
+
+If `repoquery` returns the package but installation still fails, check for
+another active DNF or RPM transaction and retry after it completes:
+
+```sh
+ps -ef | grep -E '[d]nf|[r]pm'
 ```
 
 Confirm that the kernel and its module directory are installed:
