@@ -1,11 +1,11 @@
-# Recover an Oracle Linux VM that enters emergency mode after a UEK kernel update
+# Recover an Oracle Linux 8 VM after a UEK kernel update
 
 > [!IMPORTANT]
-> Follow this procedure **only when the VM boot issue started after a UEK kernel upgrade** and the serial-console symptoms match those documented below. Do not use these steps for an unrelated emergency-mode, disk, filesystem, or generic Linux boot failure.
+> This procedure applies to **Oracle Linux 8 VMs using UEK Release 7** and was validated on Oracle Linux 8.10. Follow it **only when the VM boot issue started after a UEK kernel upgrade** and the serial-console symptoms match those documented below. Do not use these steps for another Oracle Linux release or for an unrelated emergency-mode, disk, filesystem, or generic Linux boot failure.
 
 Use this procedure only when all of the following conditions apply:
 
-1. The VM is protected by Azure Site Recovery.
+1. The VM runs Oracle Linux 8 with UEK Release 7 and is protected by Azure Site Recovery.
 2. The VM was upgraded to a newer UEK kernel immediately before the boot issue appeared.
 3. The serial console shows either:
    - an `involflt.ko` panic that references `apply_alternatives()`, `module_finalize()`, and `load_module()`; or
