@@ -1,9 +1,16 @@
 # Recover an Oracle Linux VM that enters emergency mode after a UEK kernel update
 
-Use this procedure when an Azure Site Recovery-protected Oracle Linux VM encounters both of the following conditions:
+> [!IMPORTANT]
+> Follow this procedure **only when the VM boot issue started after a UEK kernel upgrade** and the serial-console symptoms match those documented below. Do not use these steps for an unrelated emergency-mode, disk, filesystem, or generic Linux boot failure.
 
-- Loading `involflt.ko` on a newly installed UEK kernel causes a kernel panic in `apply_alternatives()`.
-- Booting an older kernel with `inmage=0` avoids the driver panic, but the VM enters emergency mode because one or more non-root filesystems cannot be mounted.
+Use this procedure only when all of the following conditions apply:
+
+1. The VM is protected by Azure Site Recovery.
+2. The VM was upgraded to a newer UEK kernel immediately before the boot issue appeared.
+3. Loading `involflt.ko` on the newly installed kernel causes a panic that references `apply_alternatives()`, `module_finalize()`, and `load_module()`.
+4. Booting a previously working older kernel with `inmage=0` avoids the driver panic, but the VM enters emergency mode because one or more non-root filesystems cannot be mounted.
+
+If the VM was not recently upgraded to a new kernel, the panic does not reference `involflt`, or the older-kernel boot does not show the documented mount failures, stop and investigate the actual boot error instead of applying this procedure.
 
 This procedure restores operating-system access. It does not make the affected UEK kernel compatible with the Azure Site Recovery filter driver.
 
@@ -56,10 +63,11 @@ Use `rd.break` as described below instead of trying to unlock the root account.
 
 ## Before starting
 
-1. Take a snapshot of the OS disk.
-2. Ensure Azure Serial Console or equivalent boot-console access is available.
-3. Identify an older kernel that booted successfully before the update.
-4. Record every `/etc/fstab` entry that will be changed. Do not comment out the root filesystem entry.
+1. Confirm that the issue began after a UEK kernel upgrade and that the serial-console logs match the preceding symptoms.
+2. Take a snapshot of the OS disk.
+3. Ensure Azure Serial Console or equivalent boot-console access is available.
+4. Identify an older kernel that booted successfully before the update.
+5. Record every `/etc/fstab` entry that will be changed. Do not comment out the root filesystem entry.
 
 ## Recovery procedure
 
