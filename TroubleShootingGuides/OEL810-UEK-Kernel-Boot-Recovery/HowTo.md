@@ -75,7 +75,7 @@ kernel. Re-enable the entries that were temporarily commented and verify the
 mounts:
 
 ```sh
-sudo vi /etc/fstab
+sudo cp -a /etc/fstab.pre-uek-recovery /etc/fstab
 sudo mount -av
 ```
 
