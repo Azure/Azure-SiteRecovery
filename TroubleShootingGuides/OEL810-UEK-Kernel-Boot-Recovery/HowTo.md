@@ -71,8 +71,7 @@ The normal emergency shell might also report that the root account is locked.
    ```
 
 After the VM reaches the login prompt, it can remain on the selected older
-kernel. Restore the commented `/etc/fstab` entries only after correcting the
-underlying mount issue.
+kernel.
 
 ## Optional: upgrade to the newer kernel
 
