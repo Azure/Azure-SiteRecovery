@@ -7,10 +7,12 @@ Use this procedure only when all of the following conditions apply:
 
 1. The VM is protected by Azure Site Recovery.
 2. The VM was upgraded to a newer UEK kernel immediately before the boot issue appeared.
-3. Loading `involflt.ko` on the newly installed kernel causes a panic that references `apply_alternatives()`, `module_finalize()`, and `load_module()`.
-4. Booting a previously working older kernel with `inmage=0` avoids the driver panic, but the VM enters emergency mode because one or more non-root filesystems cannot be mounted.
+3. The serial console shows either:
+   - an `involflt.ko` panic that references `apply_alternatives()`, `module_finalize()`, and `load_module()`; or
+   - a kernel-module loading failure followed by failures to mount `/boot/efi` or other configured disks.
+4. Booting a previously working older kernel with `inmage=0` avoids the `involflt.ko` panic, but the VM still enters emergency mode because one or more non-root filesystems cannot be mounted.
 
-If the VM was not recently upgraded to a new kernel, the panic does not reference `involflt`, or the older-kernel boot does not show the documented mount failures, stop and investigate the actual boot error instead of applying this procedure.
+If the VM was not recently upgraded to a new kernel or the serial-console symptoms do not match either documented path, stop and investigate the actual boot error instead of applying this procedure.
 
 This procedure restores operating-system access. It does not make the affected UEK kernel compatible with the Azure Site Recovery filter driver.
 
@@ -37,6 +39,34 @@ Call Trace:
 ```
 
 The signature message only records kernel taint. The panic occurs while the kernel finalizes and patches the loaded module.
+
+### Kernel-module loading and filesystem mount failures
+
+Some affected boots might show a module-loading failure instead of, or before, the panic:
+
+```text
+[FAILED] Failed to start Load Kernel Modules.
+See 'systemctl status systemd-modules-load.service' for details.
+```
+
+When kernel-module indexes are empty or unusable, the detailed service status can contain:
+
+```text
+systemd-modules-load: Failed to lookup alias 'msr': Function not implemented
+systemd-modules-load.service: Failed with result 'exit-code'.
+```
+
+This can be followed by failures to load filesystem support and mount EFI or data-disk filesystems:
+
+```text
+Mounting /datadisks/disk1...
+Mounting /datadisks/disk0...
+Mounting /boot/efi...
+[FAILED] Failed to mount /datadisks/disk1.
+[FAILED] Failed to mount /datadisks/disk0.
+[FAILED] Failed to mount /boot/efi.
+[DEPEND] Dependency failed for Local File Systems.
+```
 
 ### Older kernel enters emergency mode
 
@@ -223,9 +253,35 @@ ls -lh /sysroot/lib/modules/$K/modules.{alias,alias.bin,dep,dep.bin}
 
 Do not run a plain `depmod -a` from `switch_root:/#`; it can target the temporary initramfs instead of the installed operating system.
 
-## Restore the disabled mounts
+## Upgrade to the fixed kernel and restore normal boot
 
-After access is restored:
+After the VM boots successfully on the older kernel, install the fixed Oracle UEK kernel:
+
+```sh
+sudo dnf clean all
+sudo dnf install kernel-uek-5.15.0-322.203.3.5.el8uek.x86_64
+```
+
+Confirm that the kernel and its module directory are installed:
+
+```sh
+rpm -q kernel-uek-5.15.0-322.203.3.5.el8uek.x86_64
+ls -ld /lib/modules/5.15.0-322.203.3.5.el8uek.x86_64
+```
+
+Rebuild and verify the module indexes:
+
+```sh
+FIXED_KERNEL=5.15.0-322.203.3.5.el8uek.x86_64
+sudo depmod -a "$FIXED_KERNEL"
+ls -lh /lib/modules/$FIXED_KERNEL/modules.{alias,alias.bin,dep,dep.bin}
+```
+
+The index files must be non-empty before rebooting.
+
+### Restore the disabled mounts
+
+Restore the `/etc/fstab` entries before booting the fixed kernel:
 
 1. Compare the current devices with the saved `/etc/fstab` entries:
 
@@ -252,11 +308,37 @@ After access is restored:
 
 5. Do not permanently suppress a required filesystem failure. Correct its device, UUID, filesystem, or mount configuration.
 
+After `mount -av` succeeds, select the fixed kernel and reboot:
+
+```sh
+sudo grubby --set-default /boot/vmlinuz-5.15.0-322.203.3.5.el8uek.x86_64
+sudo grubby --default-kernel
+sudo reboot
+```
+
+The `rd.break` and `inmage=0` parameters added interactively in GRUB are temporary and should not be added to the persistent kernel command line.
+
+After reboot, confirm the fixed kernel and restored mounts:
+
+```sh
+uname -r
+findmnt /boot/efi
+findmnt /datadisks/disk0
+findmnt /datadisks/disk1
+systemctl --failed
+```
+
+Expected kernel:
+
+```text
+5.15.0-322.203.3.5.el8uek.x86_64
+```
+
 ## Important follow-up actions
 
-- Keep the VM on the known-good older kernel until the affected UEK kernel and `involflt.ko` combination is supported.
-- Continue using `inmage=0` while performing recovery or diagnostic boots where the driver must not load.
-- Do not manually load `involflt.ko` on the affected kernel.
+- Keep the VM on the known-good older kernel until `kernel-uek-5.15.0-322.203.3.5.el8uek.x86_64` is installed and the restored mounts pass `mount -av`.
+- Use `inmage=0` only for recovery or diagnostic boots where the driver must not load.
+- Do not manually load `involflt.ko` on the affected older kernel package that produced the panic.
 - Treat Azure Site Recovery replication as interrupted. Validate protection health and perform resynchronization if required after the operating system is stable.
 - Preserve the original boot diagnostics and `/etc/fstab` backup for root-cause analysis.
 
