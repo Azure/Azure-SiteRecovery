@@ -87,6 +87,7 @@ kernel can upgrade to `5.15.0-322.203.3.5.el8uek.x86_64`:
 ```sh
 sudo dnf clean metadata
 sudo dnf makecache --refresh
+sudo dnf --refresh list kernel-uek-5.15.0-322.203.3.5.el8uek.x86_64
 sudo dnf install kernel-uek-5.15.0-322.203.3.5.el8uek.x86_64
 sudo grubby --set-default /boot/vmlinuz-5.15.0-322.203.3.5.el8uek.x86_64
 sudo reboot
