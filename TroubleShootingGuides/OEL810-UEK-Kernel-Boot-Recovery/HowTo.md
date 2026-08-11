@@ -18,20 +18,7 @@ load_module
 
 1. In GRUB, select a previously working older kernel.
 2. Press `e`, append `inmage=0` to the kernel command line, and press `Ctrl+X`.
-3. If the VM reaches the login prompt, install the fixed kernel:
-
-   ```sh
-   sudo dnf clean metadata
-   sudo dnf makecache --refresh
-   sudo dnf install kernel-uek-5.15.0-322.203.3.5.el8uek.x86_64
-   ```
-
-4. Select the fixed kernel and reboot:
-
-   ```sh
-   sudo grubby --set-default /boot/vmlinuz-5.15.0-322.203.3.5.el8uek.x86_64
-   sudo reboot
-   ```
+3. If the VM reaches the login prompt, it can remain on the selected older kernel.
 
 No `rd.break` or `/etc/fstab` change is required for this option.
 
@@ -83,36 +70,27 @@ The normal emergency shell might also report that the root account is locked.
    exit
    ```
 
-7. After the VM reaches the login prompt, install the fixed kernel:
+After the VM reaches the login prompt, it can remain on the selected older
+kernel. Restore the commented `/etc/fstab` entries only after correcting the
+underlying mount issue.
 
-   ```sh
-   sudo dnf clean metadata
-   sudo dnf makecache --refresh
-   sudo dnf install kernel-uek-5.15.0-322.203.3.5.el8uek.x86_64
-   ```
+## Optional: upgrade to the newer kernel
 
-8. Restore `/etc/fstab` and verify the mounts:
-
-   ```sh
-   sudo cp -a /etc/fstab.pre-uek-recovery /etc/fstab
-   sudo mount -av
-   ```
-
-9. Select the fixed kernel and reboot:
-
-   ```sh
-   sudo grubby --set-default /boot/vmlinuz-5.15.0-322.203.3.5.el8uek.x86_64
-   sudo reboot
-   ```
-
-After reboot, confirm the expected kernel:
+If the customer does not want to remain on the older kernel, they can upgrade
+to `5.15.0-322.203.3.5.el8uek.x86_64`:
 
 ```sh
-uname -r
+sudo dnf clean metadata
+sudo dnf makecache --refresh
+sudo dnf install kernel-uek-5.15.0-322.203.3.5.el8uek.x86_64
+sudo grubby --set-default /boot/vmlinuz-5.15.0-322.203.3.5.el8uek.x86_64
+sudo reboot
 ```
 
-Expected output:
+If `/etc/fstab` was changed during recovery, restore it after booting the newer
+kernel and verify the mounts:
 
-```text
-5.15.0-322.203.3.5.el8uek.x86_64
+```sh
+sudo cp -a /etc/fstab.pre-uek-recovery /etc/fstab
+sudo mount -av
 ```
