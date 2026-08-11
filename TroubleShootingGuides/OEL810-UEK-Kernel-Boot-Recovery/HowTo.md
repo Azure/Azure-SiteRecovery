@@ -76,8 +76,8 @@ underlying mount issue.
 
 ## Optional: upgrade to the newer kernel
 
-If the customer does not want to remain on the older kernel, they can upgrade
-to `5.15.0-322.203.3.5.el8uek.x86_64`:
+After the VM is able to boot, customers who do not want to remain on the older
+kernel can upgrade to `5.15.0-322.203.3.5.el8uek.x86_64`:
 
 ```sh
 sudo dnf clean metadata
@@ -87,10 +87,13 @@ sudo grubby --set-default /boot/vmlinuz-5.15.0-322.203.3.5.el8uek.x86_64
 sudo reboot
 ```
 
-If `/etc/fstab` was changed during recovery, restore it after booting the newer
-kernel and verify the mounts:
+If entries were temporarily commented in `/etc/fstab` during Option 2, edit
+the file after booting the newer kernel and re-enable only those entries:
 
 ```sh
-sudo cp -a /etc/fstab.pre-uek-recovery /etc/fstab
+sudo vi /etc/fstab
 sudo mount -av
 ```
+
+Skip this step if `/etc/fstab` was not changed. `mount -av` verifies that the
+re-enabled filesystems can mount successfully.
