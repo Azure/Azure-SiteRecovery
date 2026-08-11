@@ -10,7 +10,7 @@ Use this procedure only when all of the following conditions apply:
 3. The serial console shows either:
    - an `involflt.ko` panic that references `apply_alternatives()`, `module_finalize()`, and `load_module()`; or
    - a kernel-module loading failure followed by failures to mount `/boot/efi` or other configured disks.
-4. Booting a previously working older kernel with `inmage=0` avoids the `involflt.ko` panic, but the VM still enters emergency mode because one or more non-root filesystems cannot be mounted.
+4. Booting a previously working older kernel with `inmage=0` avoids the `involflt.ko` panic.
 
 If the VM was not recently upgraded to a new kernel or the serial-console symptoms do not match either documented path, stop and investigate the actual boot error instead of applying this procedure.
 
@@ -101,24 +101,52 @@ Use `rd.break` as described below instead of trying to unlock the root account.
 
 ## Recovery procedure
 
-### 1. Boot an older kernel and stop before `switch_root`
+### 1. First try the older kernel with only `inmage=0`
 
 1. Restart the VM and open the GRUB menu.
 2. Select an older known-good kernel.
 3. Press `e` to edit the selected entry.
 4. Locate the line beginning with `linux`, `linux16`, or `linuxefi`.
-5. Append these parameters to that line:
+5. Append this parameter to that line:
+
+   ```text
+   inmage=0
+   ```
+
+   `inmage=0` prevents the Azure Site Recovery boot logic from loading
+   `involflt.ko`.
+
+6. Press `Ctrl+X` to boot the edited entry.
+
+The early boot log should show the older kernel and the parameter:
+
+```text
+Command line: ... vmlinuz-<older-kernel> ... inmage=0
+```
+
+If the VM reaches the normal login prompt, do not use `rd.break` and do not
+modify `/etc/fstab`. Continue directly to
+[Upgrade to the fixed kernel and restore normal boot](#upgrade-to-the-fixed-kernel-and-restore-normal-boot).
+
+Proceed with the remaining `rd.break` and `/etc/fstab` recovery steps only if
+the older-kernel boot displays the documented `/boot/efi` or data-disk mount
+failures and enters emergency mode.
+
+### 2. Only for mount failures: boot with `rd.break`
+
+1. Restart the VM and select the same older known-good kernel in GRUB.
+2. Press `e` and append both parameters to the kernel line:
 
    ```text
    rd.break inmage=0
    ```
 
-   - `inmage=0` prevents the Azure Site Recovery boot logic from loading `involflt.ko`.
-   - `rd.break` opens an initramfs shell before systemd requires emergency-mode root authentication.
+   `rd.break` opens an initramfs shell before systemd requires
+   emergency-mode root authentication.
 
-6. Press `Ctrl+X` to boot the edited entry.
+3. Press `Ctrl+X` to boot the edited entry.
 
-The early boot log should show the older kernel and both parameters:
+Confirm that the command line contains both parameters:
 
 ```text
 Command line: ... vmlinuz-<older-kernel> ... rd.break inmage=0
@@ -130,7 +158,7 @@ Wait for this prompt:
 switch_root:/#
 ```
 
-### 2. Make the installed root filesystem writable
+### 3. Make the installed root filesystem writable
 
 The `/` filesystem at `switch_root:/#` is the temporary initramfs. The installed operating system is mounted at `/sysroot`.
 
@@ -150,7 +178,7 @@ Expected output contains `(rw,`:
 /dev/mapper/<root-volume> on /sysroot type xfs (rw,...)
 ```
 
-### 3. Back up and inspect `/etc/fstab`
+### 4. Back up and inspect `/etc/fstab`
 
 Create a timestamped backup before editing:
 
@@ -174,7 +202,7 @@ UUID=<disk0-uuid> /datadisks/disk0  ext4  defaults,...  1 2
 UUID=<disk1-uuid> /datadisks/disk1  ext4  defaults,...  1 2
 ```
 
-### 4. Temporarily disable the failing non-root mounts
+### 5. Temporarily disable the failing non-root mounts
 
 Edit the installed system's file, not `/etc/fstab` in the temporary initramfs:
 
@@ -202,7 +230,7 @@ Review the resulting file:
 cat /sysroot/etc/fstab
 ```
 
-### 5. Continue booting
+### 6. Continue booting
 
 Flush the change and leave the initramfs shell:
 
@@ -302,9 +330,12 @@ ls -lh /lib/modules/$FIXED_KERNEL/modules.{alias,alias.bin,dep,dep.bin}
 
 The index files must be non-empty before rebooting.
 
-### Restore the disabled mounts
+### Restore any disabled mounts
 
-Restore the `/etc/fstab` entries before booting the fixed kernel:
+If the mount-failure recovery path required changes to `/etc/fstab`, restore
+those entries before booting the fixed kernel. If the VM booted successfully
+with only `inmage=0`, skip this subsection because `/etc/fstab` was not
+modified.
 
 1. Compare the current devices with the saved `/etc/fstab` entries:
 
