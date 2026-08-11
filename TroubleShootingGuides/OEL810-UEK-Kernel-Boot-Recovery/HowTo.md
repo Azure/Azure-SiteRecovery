@@ -1,9 +1,9 @@
 # Recover an Oracle Linux 8 VM after a UEK kernel update
 
 > [!IMPORTANT]
-> Use this procedure only for an Azure Site Recovery-protected Oracle Linux 8 VM that stopped booting after a UEK kernel update.
+> Use this procedure only for an Azure Site Recovery-protected Oracle Linux 8 VM that stopped booting after upgrading to UEK kernel `5.15.0-322.203.3.4.5.el8uek.x86_64`.
 
-The serial console might show an `involflt` panic:
+When booting `5.15.0-322.203.3.4.5.el8uek.x86_64`, the serial console might show an `involflt` panic:
 
 ```text
 involflt: loading out-of-tree module taints kernel.
