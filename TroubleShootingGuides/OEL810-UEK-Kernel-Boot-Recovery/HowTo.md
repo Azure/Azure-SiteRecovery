@@ -71,7 +71,13 @@ The normal emergency shell might also report that the root account is locked.
    ```
 
 After the VM reaches the login prompt, it can remain on the selected older
-kernel.
+kernel. Re-enable the entries that were temporarily commented and verify the
+mounts:
+
+```sh
+sudo vi /etc/fstab
+sudo mount -av
+```
 
 ## Optional: upgrade to the newer kernel
 
@@ -85,14 +91,3 @@ sudo dnf install kernel-uek-5.15.0-322.203.3.5.el8uek.x86_64
 sudo grubby --set-default /boot/vmlinuz-5.15.0-322.203.3.5.el8uek.x86_64
 sudo reboot
 ```
-
-If entries were temporarily commented in `/etc/fstab` during Option 2, edit
-the file after booting the newer kernel and re-enable only those entries:
-
-```sh
-sudo vi /etc/fstab
-sudo mount -av
-```
-
-Skip this step if `/etc/fstab` was not changed. `mount -av` verifies that the
-re-enabled filesystems can mount successfully.
