@@ -3,6 +3,9 @@
 ## Introduction
 This document contains download links of the on-premise Mobility Agents.
 
+> [!NOTE]
+> This page publishes full V2A Mobility Agent releases. For common A2A and V2A kernel module updates and supported-kernel lists, see [Common Kernel Module Updates](../KernelModuleUpdates/README.md).
+
 ## Content
 The following sections contain the latest ASR Mobility Agent for MS Windows and Linux distros. Please refer to the support matrix for more details about supported operating systems and kernels.
 
