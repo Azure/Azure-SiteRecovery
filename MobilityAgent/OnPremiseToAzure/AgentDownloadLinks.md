@@ -6,6 +6,11 @@ This document contains download links of the on-premise Mobility Agents.
 ## Content
 The following sections contain the latest ASR Mobility Agent for MS Windows and Linux distros. Please refer to the support matrix for more details about supported operating systems and kernels.
 
+### Version 9.67
+
+- [RHEL9-64][RHEL9-64-967]
+- [Windows][Windows-967]
+
 ### Version 9.66
 
 - [DEBIAN10-64][DEBIAN10-64-966]
@@ -101,6 +106,9 @@ Please refer to the installation instructions on how to configure Mobility Agent
 ---
 
 ## References
+
+[RHEL9-64-967]: https://download.microsoft.com/download/ac5c948d-0cba-4515-9214-209a5a35105b/Microsoft-ASR_UA_9.67.7849.1_RHEL9-64_GA_29Jun2026_release.tar.gz
+[Windows-967]: https://download.microsoft.com/download/141f15c8-f33d-4d4f-bab2-72e29da26f97/Microsoft-ASR_UA_9.67.7775.1_Windows_GA_16Apr2026_release.exe
 
 [DEBIAN10-64]: https://download.microsoft.com/download/5038afce-07e3-40cd-b124-4161dd3bd8ea/Microsoft-ASR_UA_9.65.0.0_DEBIAN10-64_GA_23Apr2025_release.tar.gz
 [DEBIAN11-64]: https://download.microsoft.com/download/5038afce-07e3-40cd-b124-4161dd3bd8ea/Microsoft-ASR_UA_9.65.0.0_DEBIAN11-64_GA_23Apr2025_release.tar.gz
