@@ -5,7 +5,7 @@
 This document provides instructions to download and install the ASR Mobility Agent Kernel Module on a Linux machine where the kernel has been upgraded to a version not supported by the latest Mobility Agent.
 
 > [!NOTE]
-> This page covers common A2A and V2A kernel module updates and their supported-kernel information. For agent releases, see [A2A Extension Releases](A2AReleases/README.md) or [V2A Mobility Agent Releases](V2AReleases/README.md).
+> This page covers common A2A and V2A kernel module updates and their supported-kernel information. For agent releases, see [A2A Extension Releases](AzureToAzure/README.md) or [V2A Mobility Agent Releases](OnPremiseToAzure/README.md).
 
 ASR now supports new kernels by providing the required kernel module via the Microsoft Download Center (DLC). Customers must follow a few manual steps to install the ASR kernel module.
 
