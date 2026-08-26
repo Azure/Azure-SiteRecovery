@@ -42,6 +42,7 @@ Each link is unique for a Linux distribution and points to a `.tar.gz` file. The
 
 - [Debian 11](https://aka.ms/DriversPackage_DEBIAN11)
 - [Debian 12](https://aka.ms/DriversPackage_DEBIAN12)
+- [Debian 13](https://aka.ms/DriversPackage_DEBIAN13)
 - [RHEL 8](https://aka.ms/DriversPackage_RHEL8)
 - [RHEL 9](https://aka.ms/DriversPackage_RHEL9)
 - [SLES 15](https://aka.ms/DriversPackage_SLES15)

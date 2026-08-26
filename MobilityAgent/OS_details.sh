@@ -14,11 +14,11 @@ if [ -f /etc/oracle-release ]; then
         if [ `uname -m` = "x86_64" ]; then
             OS="OL8-64"
         fi
-    elif grep -q 'Oracle Linux Server release 9.[0-6]' /etc/oracle-release; then
+    elif grep -q 'Oracle Linux Server release 9.[0-7]' /etc/oracle-release; then
         if [ `uname -m` = "x86_64" ]; then
               OS="OL9-64"
         fi    
-    elif grep -q 'Oracle Linux Server release 10.0' /etc/oracle-release; then
+    elif grep -q 'Oracle Linux Server release 10.[0-1]' /etc/oracle-release; then
         if [ `uname -m` = "x86_64" ]; then
               OS="OL10-64"
         fi    
@@ -51,15 +51,15 @@ elif [ -f /etc/redhat-release ]; then
             OS="RHEL8-64"
         fi
     elif grep -q 'Red Hat Enterprise Linux release 9.[0-8]' /etc/redhat-release || \
-        grep -q 'CentOS Linux release 9.[0-8]' /etc/redhat-release || \
+        grep -q 'CentOS Linux release 9.[0-8]' /etc/redhat-release|| \
         grep -q 'Rocky Linux release 9.[0-8]' /etc/redhat-release || \
 		grep -q 'AlmaLinux release 9.[0-8]' /etc/redhat-release; then
         if [ `uname -m` = "x86_64" ]; then
             OS="RHEL9-64"
         fi
-    elif grep -q 'Red Hat Enterprise Linux release 10.0' /etc/redhat-release || \
-        grep -q 'Rocky Linux release 10.0' /etc/redhat-release || \
-		grep -q 'AlmaLinux release 10.0' /etc/redhat-release; then
+    elif grep -q 'Red Hat Enterprise Linux release 10.[0-2]' /etc/redhat-release || \
+        grep -q 'Rocky Linux release 10.[0-2]' /etc/redhat-release || \
+		grep -q 'AlmaLinux release 10.[0-2]' /etc/redhat-release; then
         if [ `uname -m` = "x86_64" ]; then
             OS="RHEL10-64"
         fi
@@ -83,6 +83,10 @@ elif [ -f /etc/os-release ] && egrep -q 'SLES|openSUSE Leap' /etc/os-release; th
     if grep -q 'VERSION="15' /etc/os-release; then
         if [ `uname -m` = "x86_64" ]; then
             OS="SLES15-64"
+        fi
+    elif grep -q 'VERSION="16' /etc/os-release; then
+        if [ `uname -m` = "x86_64" ]; then
+            OS="SLES16-64"
         fi
     fi
 elif [ -f /etc/lsb-release ] ; then
@@ -110,6 +114,10 @@ elif [ -f /etc/lsb-release ] ; then
 	if [ `uname -m` = "x86_64" ]; then
             OS="UBUNTU-24.04-64"
         fi
+    elif grep -q 'DISTRIB_RELEASE=26.04' /etc/lsb-release ; then
+	if [ `uname -m` = "x86_64" ]; then
+            OS="UBUNTU-26.04-64"
+        fi
     fi
 elif [ -f /etc/debian_version ]; then
     if grep -q '^7.*' /etc/debian_version; then
@@ -136,6 +144,10 @@ elif [ -f /etc/debian_version ]; then
         if [ `uname -m` = "x86_64" ]; then
             OS="DEBIAN12-64"
         fi
+    elif grep -q '^13.*' /etc/debian_version; then
+        if [ `uname -m` = "x86_64" ]; then
+            OS="DEBIAN13-64"
+        fi
     fi
 fi
 
@@ -143,3 +155,4 @@ if [ $# -gt 0 ]
 then
     echo $OS
 fi
+

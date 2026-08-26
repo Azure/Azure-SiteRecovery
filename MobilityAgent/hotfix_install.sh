@@ -93,7 +93,7 @@ fi
 
 # Get the platform type
 
-if [ "$GREENFIELD" -eq 0 ]; then
+if [ -z "$GREENFIELD" ]; then
     DRSCOUT_PLATFORM=$(grep ^VmPlatform ${INSTALL_DIR}/etc/drscout.conf | cut -d"=" -f2 | tr -d " ")
     DrScout_Platform=$(tr [A-Z] [a-z] <<<$DRSCOUT_PLATFORM)
     VM_PLATFORM=`echo $DrScout_Platform | tr -d " "`
@@ -121,28 +121,28 @@ DRIVERS=(
     ["UBUNTU20"]="https://aka.ms/DriversPackage_UBUNTU20"
     ["UBUNTU22"]="https://aka.ms/DriversPackage_UBUNTU22"
     ["UBUNTU24"]="https://aka.ms/DriversPackage_UBUNTU24"
+    ["UBUNTU26"]="https://aka.ms/DriversPackage_UBUNTU26"
     ["DEBIAN11"]="https://aka.ms/DriversPackage_DEBIAN11"
     ["DEBIAN12"]="https://aka.ms/DriversPackage_DEBIAN12"
+    ["DEBIAN13"]="https://aka.ms/DriversPackage_DEBIAN13"
     ["SLES15"]="https://aka.ms/DriversPackage_SLES15"
+    ["SLES16"]="https://aka.ms/DriversPackage_SLES16"
     ["RHEL8"]="https://aka.ms/DriversPackage_RHEL8"
     ["RHEL9"]="https://aka.ms/DriversPackage_RHEL9"
+    ["RHEL10"]="https://aka.ms/DriversPackage_RHEL10"
 )
 
 module_load_log_file=$INSTALL_LOGFILE
 
-# Always use OS_details.sh from the downloaded hotfix package (has latest OS support)
-os_details_file_path="$test_root_dir/OS_details.sh"
-if [ ! -f "$os_details_file_path" ]; then
-    trace_log_message "OS_details.sh file not found in the given directory path."
-    exit 1
-fi
-chmod +x "$os_details_file_path"
-
-# In brownfield, replace the old OS_details.sh with the updated one from the hotfix package
-if [ "$GREENFIELD" -eq 0 ]; then
-    if [ -d "$INSTALL_DIR/scripts/vCon" ]; then
-        cp -f "$os_details_file_path" "$INSTALL_DIR/scripts/vCon/OS_details.sh"
-        trace_log_message -q "Replaced OS_details.sh in $INSTALL_DIR/scripts/vCon/"
+if [ -z "$GREENFIELD" ]; then
+    # brownfield case
+    os_details_file_path="$INSTALL_DIR/scripts/vCon/OS_details.sh"
+else
+    # greenfield case - new installation
+    os_details_file_path="$test_root_dir/OS_details.sh"
+    if [ ! -f "$os_details_file_path" ]; then
+        trace_log_message "OS_details.sh file not found in the given directory path."
+        exit 1
     fi
 fi
 
@@ -157,6 +157,7 @@ RHEL6_KVL="2.6.32"
 RHEL7_KVL="3.10.0"
 RHEL8_KVL="4.18.0"
 RHEL9_KVL="5.14.0"
+RHEL10_KVL="6.12.0"
 
 is_TrustedLaunch()
 {
@@ -183,23 +184,58 @@ get_driver_directory_for_sles()
         # we dont ship signed driver for SLES12-64
         trace_log_message -q "Loading unsigned driver from drivers dir for SLES12-64 in all cases"
         driver="${DEPLOY_DIR}/UnSigned"
-    elif [ "$OS" = "SLES15-64" ]; then
+    elif [ "$OS" = "SLES15-64" -o "$OS" = "SLES16-64" ]; then
         if [ "$VM_PLATFORM" = "VmWare" ]; then
-            trace_log_message -q "Loading from drivers_unsigned for SLES15-64 on VmWare"
+            trace_log_message -q "Loading from drivers_unsigned for $OS on VmWare"
             driver="${DEPLOY_DIR}/UnSigned"
         elif [ "$VM_PLATFORM" = "Azure" ]; then
             IS_TVM=$(is_TrustedLaunch)
             if [ "$IS_TVM" = "true" ]; then
                 # For TVM VMs, we always load signed driver
-                trace_log_message -q "Loading signed driver from drivers dir for SLES15-64 on Azure TVM"
+                trace_log_message -q "Loading signed driver from drivers dir for $OS on Azure TVM"
                 driver="${DEPLOY_DIR}/Signed"
             else
-                trace_log_message -q "Loading from drivers_unsigned dir for SLES15-64 on Azure non-TVM"
+                trace_log_message -q "Loading from drivers_unsigned dir for $OS on Azure non-TVM"
                 driver="${DEPLOY_DIR}/UnSigned"
             fi
         fi
     fi
     echo "${driver}" # return the driver directory
+}
+
+copy_rhel10_drivers()
+{
+    trace_log_message -q "Kernel dir = $k_dir"
+
+    RHEL10_KMV_V0="55"
+    RHEL10_KMV_V1="124"
+    RHEL10_KMV_V2="211"
+
+    KERNEL_MINOR_VERSION=`echo "$k_dir" | cut -d"-" -f2 | cut -d"." -f1`
+    KERNEL_COPY_VERSION=""
+    local KERNEL_MINOR_VERSION_UPDATE=`echo "$k_dir" | cut -d"-" -f2 | cut -d"." -f2`
+    ret=1
+    case $KERNEL_MINOR_VERSION in
+        $RHEL10_KMV_V0)
+            KERNEL_COPY_VERSION=$RHEL10_KMV_V0
+        ;;
+        $RHEL10_KMV_V1)
+            KERNEL_COPY_VERSION=$RHEL10_KMV_V1
+        ;;
+        *)
+            KERNEL_COPY_VERSION=$RHEL10_KMV_V2
+        ;;
+    esac
+
+    if [ -z $KERNEL_COPY_VERSION ]; then
+        trace_log_message -q "Not copying involflt driver to kernel $k_dir"
+    else
+        trace_log_message -q "Copying $drivers_file_dir/involflt.ko.${RHEL10_KVL}-${KERNEL_COPY_VERSION} ${k_dir}"
+        cp -f $drivers_file_dir/involflt.ko.${RHEL10_KVL}-${KERNEL_COPY_VERSION}* ${k_dir}/involflt.ko
+        ret=$?
+    fi
+
+    return $ret
 }
 
 copy_rhel9_drivers()
@@ -218,8 +254,8 @@ copy_rhel9_drivers()
     RHEL9_KMV_V3_1="8"
     RHEL9_KMV_V3_2="18"
     RHEL9_KMV_V4="427"
-    RHEL9_KMV_V5="503"
-    RHEL9_KMV_V6="570"
+	RHEL9_KMV_V5="503"
+	RHEL9_KMV_V6="570"
     RHEL9_KMV_V7="611"
     RHEL9_KMV_V8="687"
 
@@ -262,7 +298,7 @@ copy_rhel9_drivers()
         $RHEL9_KMV_V5)
             KERNEL_COPY_VERSION=$RHEL9_KMV_V5
         ;;
-        $RHEL9_KMV_V6)
+		$RHEL9_KMV_V6)
             KERNEL_COPY_VERSION="$RHEL9_KMV_V6"
         ;;
         $RHEL9_KMV_V7)
@@ -370,7 +406,7 @@ copy_rhel8_drivers()
     if [ -z $KERNEL_COPY_VERSION ]; then
         trace_log_message -q "Not copying involflt driver to kernel $k_dir"
     else
-        trace_log_message -q "Copying $drivers_file_dir/involflt.ko.${RHEL8_KVL}-${KERNEL_COPY_VERSION} ${k_dir}"
+        trace_log_message -q "Copying $drivers_file_dir/involflt.ko.${RHEL9_KVL}-${KERNEL_COPY_VERSION} ${k_dir}"
         cp -f $drivers_file_dir/involflt.ko.${RHEL8_KVL}-${KERNEL_COPY_VERSION}* ${k_dir}/involflt.ko
         ret=$?
     fi
@@ -400,12 +436,19 @@ copy_rhel7_drivers()
 
 copy_rhel_drivers()
 {
+    if [ -f ${k_dir}/involflt.ko ]; then
+        trace_log_message -q "involflt.ko already exists in ${k_dir}"
+        return 0
+    fi
+
     if [ "$OS" = "RHEL7-64" -o "$OS" = "OL7-64" ]; then
         copy_rhel7_drivers
     elif [ "$OS" = "RHEL8-64" -o "$OS" = "OL8-64" ]; then
         copy_rhel8_drivers
     elif [ "$OS" = "RHEL9-64" -o "$OS" = "OL9-64" ]; then
         copy_rhel9_drivers
+    elif [ "$OS" = "RHEL10-64" -o "$OS" = "OL10-64" ]; then
+        copy_rhel10_drivers
     else
         cp -f ${DEPLOY_DIR}/bin/involflt.ko.${RHEL6_KVL}*${SEP}${suffix} ${k_dir}/involflt.ko
     fi
@@ -450,7 +493,7 @@ copy_driver_file()
         fi
     else
         local driver_dir_path=$drivers_file_dir
-        if [ "${OS}" = "SLES12-64" -o "${OS}" = "SLES15-64" ]; then
+        if [ "${OS}" = "SLES12-64" -o "${OS}" = "SLES15-64" -o "${OS}" = "SLES16-64" ]; then
             driver_dir_path=$(get_driver_directory_for_sles)
         fi
 
@@ -571,7 +614,7 @@ load_driver()
 
     modinfo $k_dir/involflt.ko >> ${INSTALL_LOGFILE} 2>&1
 
-    if [ "${OS}" = "SLES12-64" -o "${OS}" = "SLES15-64" ]; then
+    if [ "${OS}" = "SLES12-64" -o "${OS}" = "SLES15-64" -o "${OS}" = "SLES16-64" ]; then
 	    modprobe -vs involflt --allow-unsupported >> ${INSTALL_LOGFILE} 2>&1
 	else
         modprobe -vs involflt >> ${INSTALL_LOGFILE} 2>&1
@@ -594,7 +637,7 @@ load_driver()
     fi
 
     # Ensure that we regenerate initrd to persist the driver across reboots
-    if [ "$GREENFIELD" -eq 0 ]; then
+    if [ -z "$GREENFIELD" ]; then
         trace_log_message -q "Regenerating initrd..."
         $INSTALL_DIR/scripts/initrd/install.sh regenerate $ker_ver >> /var/log/InMage_drivers.log
     fi
@@ -615,11 +658,15 @@ download_driver()
         *"UBUNTU-20.04-64"*) OS_KEY="UBUNTU20" ;;
         *"UBUNTU-22.04-64"*) OS_KEY="UBUNTU22" ;;
         *"UBUNTU-24.04-64"*) OS_KEY="UBUNTU24" ;;
+        *"UBUNTU-26.04-64"*) OS_KEY="UBUNTU26" ;;
         *"DEBIAN11-64"*) OS_KEY="DEBIAN11" ;;
         *"DEBIAN12-64"*) OS_KEY="DEBIAN12" ;;
+        *"DEBIAN13-64"*) OS_KEY="DEBIAN13" ;;
         *"SLES15-64"*) OS_KEY="SLES15" ;;
+        *"SLES16-64"*) OS_KEY="SLES16" ;;
         *"RHEL8-64"*) OS_KEY="RHEL8" ;;
         *"RHEL9-64"*) OS_KEY="RHEL9" ;;
+        *"RHEL10-64"*) OS_KEY="RHEL10" ;;
         *) echo "Unsupported OS"; return 1 ;;
     esac
 
