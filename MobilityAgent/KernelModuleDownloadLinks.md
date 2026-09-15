@@ -46,10 +46,12 @@ Each link is unique for a Linux distribution and points to a `.tar.gz` file. The
 - [RHEL 8](https://aka.ms/DriversPackage_RHEL8)
 - [RHEL 9](https://aka.ms/DriversPackage_RHEL9)
 - [SLES 15](https://aka.ms/DriversPackage_SLES15)
+- [SLES 16](https://aka.ms/DriversPackage_SLES16)
 - [Ubuntu 18](https://aka.ms/DriversPackage_UBUNTU18)
 - [Ubuntu 20](https://aka.ms/DriversPackage_UBUNTU20)
 - [Ubuntu 22](https://aka.ms/DriversPackage_UBUNTU22)
 - [Ubuntu 24](https://aka.ms/DriversPackage_UBUNTU24)
+- [Ubuntu 26](https://aka.ms/DriversPackage_UBUNTU26)
 
 ## Installation Instructions
 
