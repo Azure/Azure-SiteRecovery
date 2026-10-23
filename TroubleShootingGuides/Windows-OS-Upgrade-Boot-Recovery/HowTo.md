@@ -47,6 +47,3 @@ policy; contact your administrator if the script is blocked.
 
 Confirm that replication resumes, corrective synchronization completes for the
 protected disks including the OS disk, and a new recovery point is available.
-With approval, run test failover from a new recovery point and verify Windows
-boot. Command success or a running service alone does not confirm recovery.
-Do not assume that previously generated recovery points have been repaired.
