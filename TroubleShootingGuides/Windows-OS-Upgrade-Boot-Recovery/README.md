@@ -24,8 +24,7 @@ running.
 The script discovers the agent installation directory from the registered
 `svagents` service executable and checks that `drvutil.exe` exists. Before
 making changes, it checks retained Windows Setup history for an OS build upgrade
-on or after the detected ASR installation date. It uses the earliest valid MSI
-installation date or agent/log directory creation date. Same-day upgrades qualify.
+on or after the detected ASR installation date.
 
 If a qualifying upgrade cannot be confirmed, the script makes no changes.
 Contact Microsoft Support if an upgrade is suspected but cannot be verified.
