@@ -38,3 +38,6 @@ Microsoft Support.
 
 Confirm that replication resumes, corrective synchronization completes for the
 protected disks including the OS disk, and a new recovery point is available.
+
+For further assistance, contact
+[abrsglobal@microsoft.com](mailto:abrsglobal@microsoft.com).
