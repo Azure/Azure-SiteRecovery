@@ -32,9 +32,7 @@ the following sequence:
 
 The expected command output is `Returned Success from stop All filtering`.
 If the command or service restart fails, preserve the full output and contact
-Microsoft Support. Do not repeatedly rerun the procedure or disable replication
-to work around an error. Do not bypass your organization's script execution
-policy; contact your administrator if the script is blocked.
+Microsoft Support.
 
 ## Verification
 
