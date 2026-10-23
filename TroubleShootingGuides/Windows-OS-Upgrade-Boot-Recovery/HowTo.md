@@ -6,15 +6,8 @@ failover or failover, even though the source VM is running.
 
 ## Prerequisites
 
-- Use this procedure only after Microsoft Support confirms that the VM is
-  affected by this issue.
 - Run on the **source Windows VM**, not the failed-over VM, using
   **Windows PowerShell 5.1 or later as Administrator**.
-- Obtain approval for a temporary replication interruption and corrective
-  synchronization. If an actual disaster/failover is in progress or the source
-  is unavailable, contact Microsoft Support before making changes.
-- The Mobility service (`svagents`) must be running. If it is not, contact
-  Microsoft Support rather than using this procedure to start it.
 
 ## Customer procedure
 
