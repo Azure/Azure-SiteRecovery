@@ -1,8 +1,9 @@
-# Windows Server OS upgrade: test failover or failover boot failure
+# Windows OS upgrade: test failover or failover boot failure
 
 A VM upgraded from Windows Server 2016 or later to a higher Windows Server
-release while protected by Azure Site Recovery may fail to boot during test
-failover or failover, even though the source VM is running.
+release, or from Windows 10 to Windows 11, while protected by Azure Site Recovery
+may fail to boot during test failover or failover, even though the source VM is
+running.
 
 ## Prerequisites
 
@@ -21,8 +22,14 @@ failover or failover, even though the source VM is running.
    ```
 
 The script discovers the agent installation directory from the registered
-`svagents` service executable, checks that `drvutil.exe` exists, and performs
-the following sequence:
+`svagents` service executable and checks that `drvutil.exe` exists. Before
+making changes, it checks retained Windows Setup history for an OS build upgrade
+on or after the detected ASR installation date. It uses the earliest valid MSI
+installation date or agent/log directory creation date. Same-day upgrades qualify.
+
+If a qualifying upgrade cannot be confirmed, the script makes no changes.
+Contact Microsoft Support if an upgrade is suspected but cannot be verified.
+Otherwise, after confirmation, the script performs the following sequence:
 
 | Step | Action |
 |---|---|
@@ -39,5 +46,4 @@ Microsoft Support.
 Confirm that replication resumes, corrective synchronization completes for the
 protected disks including the OS disk, and a new recovery point is available.
 
-For further assistance, contact
-[abrsglobal@microsoft.com](mailto:abrsglobal@microsoft.com).
+For further assistance, contact Microsoft Support.
