@@ -28,9 +28,4 @@ available before validating recovery.
 If the script reports that no changes were made or encounters an error, preserve
 the full output and contact Microsoft Support.
 
-## Verification
-
-Confirm that replication resumes, corrective synchronization completes for the
-protected disks including the OS disk, and a new recovery point is available.
-
 For further assistance, contact Microsoft Support.
