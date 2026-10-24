@@ -21,8 +21,8 @@ running.
    .\Invoke-OsUpgradeResync.ps1
    ```
 
-The virtual machine remains online, and application I/O continues while the script
-applies the mitigation. After corrective synchronization completes, a new recovery
-point becomes available for failover or test failover.
+The Virtual Machine is not impacted in any way as the script applies the mitigation.
+After corrective synchronization completes, a new recovery point becomes available
+which can be used for failover or test failover.
 
 For further assistance, contact Microsoft Support.
