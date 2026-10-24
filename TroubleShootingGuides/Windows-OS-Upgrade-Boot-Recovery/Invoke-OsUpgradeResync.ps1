@@ -6,6 +6,90 @@ param()
 
 $ErrorActionPreference = 'Stop'
 
+function Open-OsUpgradeAgentLog {
+    param([string]$InstallDirectory)
+
+    $logDirectories = @(
+        foreach ($configPath in [IO.Directory]::GetFiles($InstallDirectory, 'drscout.conf', [IO.SearchOption]::AllDirectories)) {
+            $section = ''
+            foreach ($line in [IO.File]::ReadAllLines($configPath)) {
+                if ($line -match '^\s*\[(?<Section>[^\]]+)\]\s*$') {
+                    $section = $Matches.Section
+                } elseif ($section -ieq 'vxagent' -and $line -match '^\s*LogPathname\s*=\s*(?<Directory>.+?)\s*$') {
+                    [Environment]::ExpandEnvironmentVariables($Matches.Directory.Trim('"'))
+                }
+            }
+        }
+    ) | Select-Object -Unique
+    $logDirectories = @($logDirectories)
+    if (@($logDirectories).Count -ne 1 -or -not [IO.Path]::IsPathRooted($logDirectories[0])) {
+        throw [IO.InvalidDataException]::new('Cannot uniquely determine the configured agent log directory.')
+    }
+    $currentLogs = @(
+        foreach ($path in [IO.Directory]::GetFiles($logDirectories[0], 'svagents_curr_*.log')) {
+            if ([IO.Path]::GetFileName($path) -match '^svagents_curr_(?<Sequence>[0-9]+)\.log$') {
+                [pscustomobject]@{ Path = $path; Sequence = [uint64]$Matches.Sequence }
+            }
+        }
+    )
+    $currentLog = $currentLogs | Sort-Object Sequence -Descending | Select-Object -First 1
+    if ($null -eq $currentLog) {
+        throw [IO.InvalidDataException]::new('No current svagents log file was found.')
+    }
+
+    # The caller stops svagents first; deny other writers and rotation until this handle is closed.
+    for ($attempt = 0; $attempt -lt 20; $attempt++) {
+        $stream = $null
+        $writer = $null
+        try {
+            $stream = [IO.FileStream]::new($currentLog.Path, [IO.FileMode]::Open, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+            $null = $stream.Seek(0, [IO.SeekOrigin]::End)
+            $writer = [IO.StreamWriter]::new($stream, [Text.UTF8Encoding]::new($false))
+            return $writer
+        } catch [IO.IOException] {
+            if (($_.Exception.HResult -band 0xffff) -ne 32 -or $attempt -eq 19) {
+                throw
+            }
+            Start-Sleep -Milliseconds 250
+        } finally {
+            if ($null -ne $stream -and $null -eq $writer) {
+                $stream.Dispose()
+            }
+        }
+    }
+}
+
+function Write-OsUpgradeAgentLog {
+    param($Run, [string]$Stage, [Nullable[int]]$ExitCode)
+
+    if ($null -eq $Run.Writer) {
+        return
+    }
+    $now = [datetime]::UtcNow
+    $record = [ordered]@{
+        Operation = 'OsUpgradeResync'
+        RunId = $Run.Id
+        Script = 'Invoke-OsUpgradeResync.ps1'
+        ScriptSha256 = $Run.ScriptHash
+        StartedUtc = $Run.StartedUtc
+        EventUtc = $now.ToString('o')
+        Stage = $Stage
+        PreviousVersion = $Run.PreviousVersion
+        CurrentVersion = $Run.CurrentVersion
+        DrvutilExitCode = $ExitCode
+    }
+    $Run.Sequence++
+    $entry = '#~> ({0}):  ALWAYS  {1} 0 {2} {3}' -f
+        $now.ToString('MM-dd-yyyy HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture),
+        $PID, $Run.Sequence, ($record | ConvertTo-Json -Compress)
+    try {
+        $Run.Writer.WriteLine($entry)
+        $Run.Writer.Flush()
+    } catch [IO.IOException], [UnauthorizedAccessException] {
+        Write-Warning "Could not write execution telemetry for run $($Run.Id): $($_.Exception.Message)"
+    }
+}
+
 function Get-AsrMsiInstallDates {
     $today = (Get-Date).Date
     $dates = @()
@@ -180,9 +264,28 @@ if (-not $PSCmdlet.ShouldProcess(
     return
 }
 
+$run = [pscustomobject]@{
+    Id = [guid]::NewGuid().ToString('D')
+    StartedUtc = [datetime]::UtcNow.ToString('o')
+    ScriptHash = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash
+    PreviousVersion = $upgrade.PreviousVersion
+    CurrentVersion = $upgrade.CurrentVersion
+    Sequence = 0
+    Writer = $null
+}
+Write-Host "OS upgrade recovery run ID: $($run.Id)"
+$exitCode = $null
+
 try {
     Stop-Service -Name 'svagents' -Confirm:$false -ErrorAction Stop
     $service.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(60))
+
+    try {
+        $run.Writer = Open-OsUpgradeAgentLog -InstallDirectory $installDirectory
+    } catch [IO.IOException], [IO.InvalidDataException], [UnauthorizedAccessException] {
+        Write-Warning "Execution telemetry is unavailable for run $($run.Id): $($_.Exception.Message)"
+    }
+    Write-OsUpgradeAgentLog -Run $run -Stage 'Started'
 
     $output = & $drvutil --stopf -stopall 2>&1
     $exitCode = $LASTEXITCODE
@@ -193,9 +296,27 @@ try {
         $outputText -match '\bFailed\b') {
         throw "drvutil did not confirm success (exit code $exitCode). Preserve the output and contact Microsoft Support."
     }
+    Write-OsUpgradeAgentLog -Run $run -Stage 'FilteringSucceeded' -ExitCode $exitCode
+} catch {
+    Write-OsUpgradeAgentLog -Run $run -Stage 'RecoveryFailed' -ExitCode $exitCode
+    throw
 } finally {
-    Start-Service -Name 'svagents' -Confirm:$false -ErrorAction Stop
-    $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(60))
+    try {
+        try {
+            Write-OsUpgradeAgentLog -Run $run -Stage 'ServiceRestartRequested'
+        } finally {
+            if ($null -ne $run.Writer) {
+                try {
+                    $run.Writer.Dispose()
+                } catch [IO.IOException], [UnauthorizedAccessException] {
+                    Write-Warning "Could not close execution telemetry for run $($run.Id): $($_.Exception.Message)"
+                }
+            }
+        }
+    } finally {
+        Start-Service -Name 'svagents' -Confirm:$false -ErrorAction Stop
+        $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(60))
+    }
 }
 
 Write-Host 'Command completed and svagents is running. Wait for synchronization and a new recovery point before validating recovery.'
