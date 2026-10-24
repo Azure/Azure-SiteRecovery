@@ -25,7 +25,4 @@ Running the script initiates mitigation for this OS-upgrade-related boot issue.
 Allow corrective synchronization to complete and a new recovery point to become
 available before validating recovery.
 
-If the script reports that no changes were made or encounters an error, preserve
-the full output and contact Microsoft Support.
-
 For further assistance, contact Microsoft Support.
