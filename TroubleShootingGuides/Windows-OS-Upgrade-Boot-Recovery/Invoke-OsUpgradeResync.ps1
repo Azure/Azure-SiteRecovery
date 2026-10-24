@@ -73,7 +73,7 @@ function Open-OsUpgradeAgentLog {
 }
 
 function Write-OsUpgradeAgentLog {
-    param($Run, [string]$Stage, [Nullable[int]]$ExitCode, [string]$Output)
+    param($Run, [string]$Stage, [Nullable[int]]$ExitCode, [string]$Output, [string]$Command)
 
     if ($null -eq $Run.Writer) {
         return
@@ -94,6 +94,9 @@ function Write-OsUpgradeAgentLog {
         }
         if (-not [string]::IsNullOrEmpty($Output)) {
             $record['DrvutilOutput'] = $Output
+        }
+        if (-not [string]::IsNullOrEmpty($Command)) {
+            $record['DrvutilCommand'] = $Command
         }
         foreach ($name in @('ScriptHashError', 'ServiceStopError', 'LoggingError')) {
             $property = $Run.PSObject.Properties[$name]
@@ -334,7 +337,7 @@ try {
 
     if (-not $PSCmdlet.ShouldProcess(
         $env:COMPUTERNAME,
-        'Stop svagents, run drvutil --stopf -stopall, restart svagents, and run drvutil --ps --dm'
+        'Stop svagents, run drvutil --stopf -stopall and drvutil --ps --dm, and start svagents'
     )) {
         return
     }
@@ -387,6 +390,11 @@ try {
         $supportShown = $true
     }
 
+    $status = Invoke-OsUpgradeDrvutil -Path $drvutil -Arguments @('--ps', '--dm')
+    if ($null -eq $status.ExitCode -or $status.ExitCode -ne 0) {
+        $needsSupport = $true
+    }
+
     try {
         $service.Refresh()
         if ($service.Status -eq 'Stopped') {
@@ -396,7 +404,8 @@ try {
             if ($commandSucceeded) {
                 $stage = 'FilteringSucceeded'
             }
-            Write-OsUpgradeAgentLog -Run $run -Stage $stage -ExitCode $exitCode -Output $outputText 3>$null
+            Write-OsUpgradeAgentLog -Run $run -Stage $stage -ExitCode $exitCode -Output $outputText -Command 'drvutil --stopf -stopall' 3>$null
+            Write-OsUpgradeAgentLog -Run $run -Stage 'DriverStatistics' -ExitCode $status.ExitCode -Output $status.Output -Command 'drvutil --ps --dm' 3>$null
         } else {
             $run.LoggingError = 'svagents is not stopped; the active log cannot be safely updated.'
         }
@@ -431,15 +440,6 @@ try {
             $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(60))
         } catch {
             $needsSupport = $true
-        } finally {
-            try {
-                $status = Invoke-OsUpgradeDrvutil -Path $drvutil -Arguments @('--ps', '--dm')
-                if ($null -eq $status.ExitCode -or $status.ExitCode -ne 0) {
-                    $needsSupport = $true
-                }
-            } catch {
-                $needsSupport = $true
-            }
         }
     }
 }
