@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 #Requires -RunAsAdministrator
 
-[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'None')]
 param()
 
 $ErrorActionPreference = 'Stop'
@@ -181,7 +181,7 @@ if (-not $PSCmdlet.ShouldProcess(
 }
 
 try {
-    Stop-Service -Name 'svagents' -ErrorAction Stop
+    Stop-Service -Name 'svagents' -Confirm:$false -ErrorAction Stop
     $service.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(60))
 
     $output = & $drvutil --stopf -stopall 2>&1
@@ -194,7 +194,7 @@ try {
         throw "drvutil did not confirm success (exit code $exitCode). Preserve the output and contact Microsoft Support."
     }
 } finally {
-    Start-Service -Name 'svagents' -ErrorAction Stop
+    Start-Service -Name 'svagents' -Confirm:$false -ErrorAction Stop
     $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(60))
 }
 

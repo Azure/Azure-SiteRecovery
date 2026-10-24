@@ -15,7 +15,7 @@ running.
 1. Download [Invoke-OsUpgradeResync.ps1](Invoke-OsUpgradeResync.ps1) to the source
    VM and review it.
 2. Open PowerShell **as Administrator** in the folder containing the script.
-3. Run the following command and confirm the operation when prompted:
+3. Run the following command:
 
    ```powershell
    .\Invoke-OsUpgradeResync.ps1
@@ -28,7 +28,8 @@ on or after the detected ASR installation date.
 
 If a qualifying upgrade cannot be confirmed, the script makes no changes.
 Contact Microsoft Support if an upgrade is suspected but cannot be verified.
-Otherwise, after confirmation, the script performs the following sequence:
+Otherwise, the script automatically performs the following sequence without a
+confirmation prompt:
 
 | Step | Action |
 |---|---|
