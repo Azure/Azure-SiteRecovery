@@ -21,9 +21,8 @@ running.
    .\Invoke-OsUpgradeResync.ps1
    ```
 
-Running the script initiates mitigation for this OS-upgrade-related boot issue.
-The VM remains online, and application I/O continues while the script applies
-the mitigation. After corrective synchronization completes, a new recovery point
-becomes available for failover or test failover.
+The virtual machine remains online, and application I/O continues while the script
+applies the mitigation. After corrective synchronization completes, a new recovery
+point becomes available for failover or test failover.
 
 For further assistance, contact Microsoft Support.
