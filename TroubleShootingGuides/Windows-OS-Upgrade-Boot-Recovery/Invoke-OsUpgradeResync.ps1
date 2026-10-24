@@ -5,6 +5,7 @@
 param()
 
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
 
 function Open-OsUpgradeAgentLog {
     param([string]$InstallDirectory)
@@ -94,6 +95,12 @@ function Write-OsUpgradeAgentLog {
         if (-not [string]::IsNullOrEmpty($Output)) {
             $record['DrvutilOutput'] = $Output
         }
+        foreach ($name in @('ScriptHashError', 'ServiceStopError', 'LoggingError')) {
+            $property = $Run.PSObject.Properties[$name]
+            if ($null -ne $property -and -not [string]::IsNullOrEmpty($property.Value)) {
+                $record[$name] = $property.Value
+            }
+        }
         $Run.Sequence++
         $entry = '#~> ({0}):  ALWAYS  {1} 0 {2} {3}' -f
             $now.ToString('MM-dd-yyyy HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture),
@@ -122,7 +129,6 @@ function Get-AsrMsiInstallDates {
                             [Globalization.DateTimeStyles]::None, [ref]$date) -and
                         $date.Year -ge 1601 -and $date.Date -le $today) {
                         $dates += $date.Date
-                        Write-Host "ASR MSI installation date ($view): $($date.ToString('yyyy-MM-dd'))"
                     } else {
                         Write-Warning "The ASR MSI installation date in $view is missing or invalid."
                     }
@@ -164,7 +170,6 @@ function Get-AsrInstallDate {
             continue
         }
         $dates += $date
-        Write-Host "ASR directory creation date ('$directory'): $($date.ToString('yyyy-MM-dd'))"
     }
 
     if ($dates.Count -eq 0) {
@@ -174,64 +179,128 @@ function Get-AsrInstallDate {
     return $dates | Sort-Object | Select-Object -First 1
 }
 
-function Get-PostAsrWindowsUpgrade {
-    param([datetime]$AsrInstallDate, [version]$CurrentVersion)
+function Get-WindowsUpgrade {
+    param([version]$CurrentVersion)
 
-    $formats = [string[]]@('M/d/yyyy H:mm:ss', 'M/d/yyyy h:mm:ss tt')
-    $history = @(Get-ChildItem -LiteralPath 'HKLM:\SYSTEM\Setup' -ErrorAction Stop |
-        Where-Object { $_.PSChildName -like 'Source OS*' })
-    foreach ($entry in $history) {
-        $upgradeDate = [datetime]::MinValue
-        if ($entry.PSChildName -notmatch '^Source OS \(Updated on (?<Timestamp>.+)\)$' -or
-            -not [datetime]::TryParseExact($Matches.Timestamp, $formats, [Globalization.CultureInfo]::InvariantCulture,
-                [Globalization.DateTimeStyles]::None, [ref]$upgradeDate) -or
-            $upgradeDate.Year -lt 1601 -or $upgradeDate.Date -gt (Get-Date).Date) {
-            Write-Warning "Cannot verify the Windows upgrade date in '$($entry.PSChildName)'. No changes were made. Contact Microsoft Support." -WarningAction Continue
-            return $null
-        }
-        if ($upgradeDate.Date -lt $AsrInstallDate.Date) {
-            continue
-        }
-
-        $previous = Get-ItemProperty -LiteralPath $entry.PSPath -ErrorAction Stop
-        $buildText = $previous.CurrentBuild
-        if ($null -eq $previous.PSObject.Properties['CurrentBuild']) {
-            $buildText = $previous.CurrentBuildNumber
-        }
-        $previousBuild = [uint32]0
-        if ($buildText -isnot [string] -or $buildText -notmatch '^[0-9]+$' -or
-            -not [uint32]::TryParse($buildText, [ref]$previousBuild) -or $previousBuild -eq 0) {
-            Write-Warning "Cannot verify the previous Windows build in '$($entry.PSChildName)'. No changes were made. Contact Microsoft Support." -WarningAction Continue
-            return $null
-        }
-
-        $previousMajor = $previous.CurrentMajorVersionNumber
-        $previousMinor = $previous.CurrentMinorVersionNumber
-        if ($previousMajor -isnot [int] -or $previousMinor -isnot [int] -or
-            $previousMajor -lt 0 -or $previousMinor -lt 0) {
-            $previousMajor = 6
-            if ($previousBuild -ge 10240) {
-                $previousMajor = 10
+    $assessment = [pscustomobject]@{
+        Status = 'Undetermined'
+        Date = $null
+        PreviousVersion = $null
+        CurrentVersion = $CurrentVersion.ToString()
+        Diagnostic = $null
+    }
+    try {
+        $formats = [string[]]@('M/d/yyyy H:mm:ss', 'M/d/yyyy h:mm:ss tt')
+        $history = @(Get-ChildItem -LiteralPath 'HKLM:\SYSTEM\Setup' -ErrorAction Stop |
+            Where-Object { $_.PSChildName -like 'Source OS*' })
+        $upgrades = [Collections.Generic.List[object]]::new()
+        foreach ($entry in $history) {
+            $upgradeDate = [datetime]::MinValue
+            if ($entry.PSChildName -notmatch '^Source OS \(Updated on (?<Timestamp>.+)\)$' -or
+                -not [datetime]::TryParseExact($Matches.Timestamp, $formats, [Globalization.CultureInfo]::InvariantCulture,
+                    [Globalization.DateTimeStyles]::None, [ref]$upgradeDate) -or
+                $upgradeDate.Year -lt 1601 -or $upgradeDate.Date -gt (Get-Date).Date) {
+                $assessment.Diagnostic = 'Cannot verify the Windows upgrade date.'
+                return $assessment
             }
-            $previousMinor = 0
-        }
-        if ($previousMajor -eq $CurrentVersion.Major -and $previousMinor -eq $CurrentVersion.Minor -and
-            $previousBuild -lt $CurrentVersion.Build) {
-            return [pscustomobject]@{
-                Date = $upgradeDate
-                PreviousVersion = "$previousMajor.$previousMinor.$previousBuild"
-                CurrentVersion = $CurrentVersion.ToString()
+
+            $previous = Get-ItemProperty -LiteralPath $entry.PSPath -ErrorAction Stop
+            $buildText = $previous.CurrentBuild
+            if ($null -eq $previous.PSObject.Properties['CurrentBuild']) {
+                $buildText = $previous.CurrentBuildNumber
+            }
+            $previousBuild = [uint32]0
+            if ($buildText -isnot [string] -or $buildText -notmatch '^[0-9]+$' -or
+                -not [uint32]::TryParse($buildText, [ref]$previousBuild) -or $previousBuild -eq 0) {
+                $assessment.Diagnostic = 'Cannot verify the previous Windows build.'
+                return $assessment
+            }
+
+            $previousMajor = $previous.CurrentMajorVersionNumber
+            $previousMinor = $previous.CurrentMinorVersionNumber
+            if ($previousMajor -isnot [int] -or $previousMinor -isnot [int] -or
+                $previousMajor -lt 0 -or $previousMinor -lt 0) {
+                $previousMajor = 6
+                if ($previousBuild -ge 10240) {
+                    $previousMajor = 10
+                }
+                $previousMinor = 0
+            }
+            if ($previousMajor -eq $CurrentVersion.Major -and $previousMinor -eq $CurrentVersion.Minor -and
+                $previousBuild -lt $CurrentVersion.Build) {
+                $upgrades.Add([pscustomobject]@{
+                    Date = $upgradeDate
+                    PreviousVersion = "$previousMajor.$previousMinor.$previousBuild"
+                })
             }
         }
+
+        $latest = $upgrades | Sort-Object Date -Descending | Select-Object -First 1
+        $assessment.Status = 'NotUpgraded'
+        if ($null -ne $latest) {
+            $assessment.Status = 'Upgraded'
+            $assessment.Date = $latest.Date
+            $assessment.PreviousVersion = $latest.PreviousVersion
+        }
+    } catch {
+        $assessment.Diagnostic = $_.Exception.Message
+    }
+    return $assessment
+}
+
+function Invoke-OsUpgradeDrvutil {
+    param([string]$Path, [string[]]$Arguments)
+
+    $output = [Collections.Generic.List[string]]::new()
+    $exitCode = $null
+    $commandErrorPreference = $ErrorActionPreference
+    try {
+        # Windows PowerShell 5.1 can treat native stderr as an error; buffer both streams.
+        $ErrorActionPreference = 'Continue'
+        $global:LASTEXITCODE = $null
+        & $Path @Arguments 2>&1 | ForEach-Object { $output.Add([string]$_) }
+        $exitCode = $global:LASTEXITCODE
+    } catch {
+        $output.Add($_.Exception.Message)
+    } finally {
+        $ErrorActionPreference = $commandErrorPreference
+    }
+    return [pscustomobject]@{
+        ExitCode = $exitCode
+        Output = $output -join [Environment]::NewLine
     }
 }
 
-try {
-    $service = Get-Service -Name 'svagents' -ErrorAction Stop
+$noImpactMessage = 'There is no impact on this virtual machine.'
+$undeterminedMessage = 'If you have upgraded OS from 2016 or above to higher version after installing ASR please contact https://aka.ms/azuresupport.'
+$impactedMessage = 'Your Virtual machine is impacted, please contact https://aka.ms/azuresupport.'
+$completedMessage = 'Script executed, Wait for new recovery point to be available before performing test failover or failover.'
 
+try {
+    $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+    $currentVersion = $null
+    if (-not [version]::TryParse($os.Version, [ref]$currentVersion) -or $currentVersion.Build -le 0) {
+        Write-Host $undeterminedMessage
+        return
+    }
+    if ($currentVersion.Major -ne 10 -or $currentVersion.Minor -ne 0) {
+        Write-Host $noImpactMessage
+        return
+    }
+    $upgrade = Get-WindowsUpgrade -CurrentVersion $currentVersion
+    if ($upgrade.Status -eq 'NotUpgraded') {
+        Write-Host $noImpactMessage
+        return
+    }
+    if ($upgrade.Status -ne 'Upgraded') {
+        Write-Host $undeterminedMessage
+        return
+    }
+
+    $service = Get-Service -Name 'svagents' -ErrorAction Stop
     $serviceConfiguration = Get-CimInstance -ClassName Win32_Service -Filter "Name='svagents'" -ErrorAction Stop
     if ($null -eq $serviceConfiguration -or [string]::IsNullOrWhiteSpace($serviceConfiguration.PathName)) {
-        Write-Warning 'Cannot determine the svagents executable path. No changes were made.' -WarningAction Continue
+        Write-Host $undeterminedMessage
         return
     }
 
@@ -240,63 +309,46 @@ try {
         $imagePath -match '^\s*(?<Executable>.+?\.exe)(?:\s|$)') {
         $serviceExecutable = $Matches.Executable
     } else {
-        Write-Warning 'Cannot parse the svagents executable path. No changes were made.' -WarningAction Continue
+        Write-Host $undeterminedMessage
         return
     }
 
     if (-not [IO.Path]::IsPathRooted($serviceExecutable) -or
         [IO.Path]::GetFileName($serviceExecutable) -ine 'svagents.exe' -or
         -not (Test-Path -LiteralPath $serviceExecutable -PathType Leaf)) {
-        Write-Warning 'The registered svagents executable path is invalid. No changes were made.' -WarningAction Continue
+        Write-Host $undeterminedMessage
         return
     }
 
     $installDirectory = [IO.Path]::GetDirectoryName($serviceExecutable)
-    $drvutil = Join-Path -Path $installDirectory -ChildPath 'drvutil.exe'
-    if (-not (Test-Path -LiteralPath $drvutil -PathType Leaf)) {
-        Write-Warning "drvutil.exe was not found in '$installDirectory'. No changes were made." -WarningAction Continue
-        return
-    }
-
-    Write-Host "Agent installation directory: $installDirectory"
-    $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
-    $currentVersion = $null
-    if (-not [version]::TryParse($os.Version, [ref]$currentVersion) -or $currentVersion.Build -le 0) {
-        Write-Warning 'Cannot determine the current Windows version. No changes were made. Contact Microsoft Support.' -WarningAction Continue
-        return
-    }
-    if ($currentVersion.Major -ne 10 -or $currentVersion.Minor -ne 0) {
-        Write-Warning 'This procedure does not apply to the current Windows version. No changes were made.' -WarningAction Continue
-        return
-    }
-    $asrInstallDate = Get-AsrInstallDate -InstallDirectory $installDirectory
+    $asrInstallDate = Get-AsrInstallDate -InstallDirectory $installDirectory 3>$null
     if ($null -eq $asrInstallDate) {
+        Write-Host $undeterminedMessage
         return
     }
-    $upgrade = Get-PostAsrWindowsUpgrade -AsrInstallDate $asrInstallDate -CurrentVersion $currentVersion
-    if ($null -eq $upgrade) {
-        Write-Warning 'Retained Windows Setup history does not confirm a qualifying upgrade on or after ASR installation. No changes were made. If an upgrade is suspected, contact Microsoft Support.' -WarningAction Continue
+    if ($asrInstallDate.Date -gt $upgrade.Date.Date) {
+        Write-Host $noImpactMessage
         return
     }
-    Write-Host "ASR installation date: $($asrInstallDate.ToString('yyyy-MM-dd'))"
-    Write-Host "Windows upgrade detected: $($upgrade.PreviousVersion) -> $($upgrade.CurrentVersion) on $($upgrade.Date.ToString('yyyy-MM-dd'))."
+    $drvutil = Join-Path -Path $installDirectory -ChildPath 'drvutil.exe'
 
     if (-not $PSCmdlet.ShouldProcess(
         $env:COMPUTERNAME,
-        'Stop svagents, run drvutil --stopf -stopall on all volumes, and restart svagents'
+        'Stop svagents, run drvutil --stopf -stopall, restart svagents, and run drvutil --ps --dm'
     )) {
         return
     }
 } catch {
-    Write-Warning "Cannot verify whether this VM requires mitigation: $($_.Exception.Message). No changes were made." -WarningAction Continue
+    Write-Host $undeterminedMessage
     return
 }
 
 $scriptHash = $null
+$scriptHashError = $null
 try {
     $scriptHash = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256 -ErrorAction Stop).Hash
 } catch {
-    Write-Warning "Could not calculate the script hash: $($_.Exception.Message). Continuing with mitigation." -WarningAction Continue
+    $scriptHashError = $_.Exception.Message
 }
 $run = [pscustomobject]@{
     Id = [guid]::NewGuid().ToString('D')
@@ -306,90 +358,92 @@ $run = [pscustomobject]@{
     CurrentVersion = $upgrade.CurrentVersion
     Sequence = 0
     Writer = $null
+    ScriptHashError = $scriptHashError
+    ServiceStopError = $null
+    LoggingError = $null
 }
-Write-Host "OS upgrade recovery run ID: $($run.Id)"
 $exitCode = $null
-$output = [Collections.Generic.List[string]]::new()
 $commandSucceeded = $false
-$serviceRestarted = $false
+$needsSupport = $false
+$supportShown = $false
 
 try {
     try {
-        Stop-Service -Name 'svagents' -Confirm:$false -ErrorAction Stop
+        Stop-Service -Name 'svagents' -Confirm:$false -ErrorAction Stop -WarningAction SilentlyContinue
         $service.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(60))
     } catch {
-        Write-Warning "Could not stop svagents: $($_.Exception.Message). Continuing with drvutil." -WarningAction Continue
+        $run.ServiceStopError = $_.Exception.Message
     }
 
-    $commandErrorPreference = $ErrorActionPreference
-    try {
-        # Windows PowerShell 5.1 can treat native stderr as an error; buffer both streams.
-        $ErrorActionPreference = 'Continue'
-        $global:LASTEXITCODE = $null
-        & $drvutil --stopf -stopall 2>&1 | ForEach-Object { $output.Add([string]$_) }
-        $exitCode = $global:LASTEXITCODE
-    } catch {
-        $output.Add("Could not run drvutil: $($_.Exception.Message)")
-    } finally {
-        $ErrorActionPreference = $commandErrorPreference
-    }
-    $output | ForEach-Object { Write-Host $_ }
-    $outputText = $output -join [Environment]::NewLine
+    $result = Invoke-OsUpgradeDrvutil -Path $drvutil -Arguments @('--stopf', '-stopall')
+    $exitCode = $result.ExitCode
+    $outputText = $result.Output
     $commandSucceeded = ($null -ne $exitCode -and $exitCode -eq 0 -and
         $outputText -match 'Returned Success from stop All filtering' -and
         $outputText -notmatch '\bFailed\b')
+    if (-not $commandSucceeded) {
+        $needsSupport = $true
+        Write-Host $impactedMessage
+        $supportShown = $true
+    }
 
     try {
         $service.Refresh()
         if ($service.Status -eq 'Stopped') {
-            $run.Writer = Open-OsUpgradeAgentLog -InstallDirectory $installDirectory
-            Write-OsUpgradeAgentLog -Run $run -Stage 'Started'
+            $run.Writer = Open-OsUpgradeAgentLog -InstallDirectory $installDirectory 3>$null
+            Write-OsUpgradeAgentLog -Run $run -Stage 'Started' 3>$null
             $stage = 'RecoveryFailed'
             if ($commandSucceeded) {
                 $stage = 'FilteringSucceeded'
             }
-            Write-OsUpgradeAgentLog -Run $run -Stage $stage -ExitCode $exitCode -Output $outputText
+            Write-OsUpgradeAgentLog -Run $run -Stage $stage -ExitCode $exitCode -Output $outputText 3>$null
         } else {
-            Write-Warning 'svagents is not stopped, so the captured output cannot be safely appended to its active log. The output is shown above.' -WarningAction Continue
+            $run.LoggingError = 'svagents is not stopped; the active log cannot be safely updated.'
         }
     } catch {
-        Write-Warning "Could not append the captured command output to the agent log: $($_.Exception.Message)" -WarningAction Continue
+        $run.LoggingError = $_.Exception.Message
     }
 } catch {
-    $commandSucceeded = $false
-    Write-Warning "Mitigation encountered an error: $($_.Exception.Message)" -WarningAction Continue
+    $needsSupport = $true
+    if (-not $supportShown) {
+        Write-Host $impactedMessage
+        $supportShown = $true
+    }
 } finally {
     try {
         try {
-            Write-OsUpgradeAgentLog -Run $run -Stage 'ServiceRestartRequested'
+            Write-OsUpgradeAgentLog -Run $run -Stage 'ServiceRestartRequested' 3>$null
         } catch {
-            Write-Warning "Could not record the service restart: $($_.Exception.Message)" -WarningAction Continue
+            $run.LoggingError = $_.Exception.Message
         } finally {
             if ($null -ne $run.Writer) {
                 try {
                     $run.Writer.Dispose()
                 } catch {
-                    Write-Warning "Could not close execution telemetry for run $($run.Id): $($_.Exception.Message)" -WarningAction Continue
+                    $run.LoggingError = $_.Exception.Message
                 }
             }
         }
     } finally {
+        Write-Host $completedMessage
         try {
-            Start-Service -Name 'svagents' -Confirm:$false -ErrorAction Stop
+            Start-Service -Name 'svagents' -Confirm:$false -ErrorAction Stop -WarningAction SilentlyContinue
             $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(60))
-            $serviceRestarted = $true
         } catch {
-            Write-Warning "Could not start svagents: $($_.Exception.Message). Contact Microsoft Support." -WarningAction Continue
+            $needsSupport = $true
+        } finally {
+            try {
+                $status = Invoke-OsUpgradeDrvutil -Path $drvutil -Arguments @('--ps', '--dm')
+                if ($null -eq $status.ExitCode -or $status.ExitCode -ne 0) {
+                    $needsSupport = $true
+                }
+            } catch {
+                $needsSupport = $true
+            }
         }
     }
 }
 
-if (-not $commandSucceeded) {
-    $exitCodeText = 'unavailable'
-    if ($null -ne $exitCode) {
-        $exitCodeText = [string]$exitCode
-    }
-    Write-Warning "drvutil did not confirm success (exit code $exitCodeText). Review the output above and contact Microsoft Support." -WarningAction Continue
-} elseif ($serviceRestarted) {
-    Write-Host 'Command completed and svagents is running. Wait for synchronization and a new recovery point before validating recovery.'
+if ($needsSupport -and -not $supportShown) {
+    Write-Host $impactedMessage
 }
