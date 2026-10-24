@@ -7,6 +7,70 @@ param()
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
+function New-OsUpgradeLogRun {
+    return [pscustomobject]@{
+        Id = [guid]::NewGuid().ToString('D')
+        StartedUtc = [datetime]::UtcNow.ToString('o')
+        ScriptHash = $null
+        PreviousVersion = $null
+        CurrentVersion = $null
+        Sequence = 0
+        Writer = $null
+        ScriptHashError = $null
+        ServiceStopError = $null
+        LoggingError = $null
+        FallbackLogPath = $null
+        Records = [Collections.Generic.List[string]]::new()
+        NativeRecordsWritten = 0
+    }
+}
+
+function Write-OsUpgradeMessage {
+    param([string]$Message, [string]$Level = 'Warning', [switch]$Console,
+        $Run = $script:osUpgradeRun)
+
+    Write-OsUpgradeAgentLog -Run $Run -Stage 'Message' -Message $Message -Level $Level
+    if ($Console) {
+        Write-Host $Message
+    }
+}
+
+function Get-OsUpgradeInstallDirectory {
+    try {
+        $configuration = Get-CimInstance -ClassName Win32_Service -Filter "Name='svagents'" -ErrorAction Stop
+        if ($null -ne $configuration -and -not [string]::IsNullOrWhiteSpace($configuration.PathName)) {
+            $imagePath = [Environment]::ExpandEnvironmentVariables($configuration.PathName)
+            if ($imagePath -match '^\s*"(?<Executable>[^"]+)"(?:\s|$)' -or
+                $imagePath -match '^\s*(?<Executable>.+?\.exe)(?:\s|$)') {
+                $executable = $Matches.Executable
+                if ([IO.Path]::IsPathRooted($executable) -and
+                    [IO.Path]::GetFileName($executable) -ieq 'svagents.exe' -and
+                    (Test-Path -LiteralPath $executable -PathType Leaf)) {
+                    return [IO.Path]::GetDirectoryName($executable)
+                }
+            }
+        }
+        Write-OsUpgradeMessage -Message 'Cannot determine the svagents installation directory.'
+    } catch {
+        Write-OsUpgradeMessage -Message "Cannot determine the svagents installation directory: $($_.Exception.Message)"
+    }
+    return $null
+}
+
+function Complete-OsUpgradeAssessment {
+    param([string]$Message, [string]$InstallDirectory)
+
+    Write-OsUpgradeMessage -Message $Message -Level 'Information' -Console
+    if (-not $WhatIfPreference) {
+        if ([string]::IsNullOrEmpty($InstallDirectory)) {
+            $InstallDirectory = Get-OsUpgradeInstallDirectory
+        }
+        if (-not [string]::IsNullOrEmpty($InstallDirectory)) {
+            Write-OsUpgradeFallbackLog -Run $script:osUpgradeRun -InstallDirectory $InstallDirectory
+        }
+    }
+}
+
 function Open-OsUpgradeAgentLog {
     param([string]$InstallDirectory)
 
@@ -25,7 +89,7 @@ function Open-OsUpgradeAgentLog {
         ) | Select-Object -Unique
         $logDirectories = @($logDirectories)
         if ($logDirectories.Count -ne 1 -or -not [IO.Path]::IsPathRooted($logDirectories[0])) {
-            Write-Warning 'Cannot uniquely determine the configured agent log directory. Skipping execution logging.' -WarningAction Continue
+            Write-OsUpgradeMessage -Message 'Cannot uniquely determine the configured agent log directory. Retaining diagnostics in the ASR installation folder.'
             return $null
         }
         $currentLogs = @(
@@ -37,7 +101,7 @@ function Open-OsUpgradeAgentLog {
         )
         $currentLog = $currentLogs | Sort-Object Sequence -Descending | Select-Object -First 1
         if ($null -eq $currentLog) {
-            Write-Warning 'No current svagents log file was found. Continuing without execution telemetry.' -WarningAction Continue
+            Write-OsUpgradeMessage -Message 'No current svagents log file was found. Retaining diagnostics in the ASR installation folder.'
             return $null
         }
 
@@ -52,7 +116,7 @@ function Open-OsUpgradeAgentLog {
                 return $writer
             } catch [IO.IOException] {
                 if (($_.Exception.HResult -band 0xffff) -ne 32 -or $attempt -eq 19) {
-                    Write-Warning "Could not open the agent log: $($_.Exception.Message). Skipping execution logging." -WarningAction Continue
+                    Write-OsUpgradeMessage -Message "Could not open the agent log: $($_.Exception.Message). Retaining diagnostics in the ASR installation folder."
                     return $null
                 }
                 Start-Sleep -Milliseconds 250
@@ -61,23 +125,20 @@ function Open-OsUpgradeAgentLog {
                     try {
                         $stream.Dispose()
                     } catch {
-                        Write-Warning "Could not close the agent log stream: $($_.Exception.Message)" -WarningAction Continue
+                        Write-OsUpgradeMessage -Message "Could not close the agent log stream: $($_.Exception.Message)"
                     }
                 }
             }
         }
     } catch {
-        Write-Warning "Execution logging is unavailable: $($_.Exception.Message)" -WarningAction Continue
+        Write-OsUpgradeMessage -Message "Native execution logging is unavailable: $($_.Exception.Message)"
         return $null
     }
 }
 
 function Write-OsUpgradeAgentLog {
-    param($Run, [string]$Stage, [Nullable[int]]$ExitCode, [string]$Output, [string]$Command)
-
-    if ($null -eq $Run.Writer) {
-        return
-    }
+    param($Run, [string]$Stage, [Nullable[int]]$ExitCode, [string]$Output, [string]$Command,
+        [string]$Message, [string]$Level)
     try {
         $now = [datetime]::UtcNow
         $record = [ordered]@{
@@ -98,6 +159,10 @@ function Write-OsUpgradeAgentLog {
         if (-not [string]::IsNullOrEmpty($Command)) {
             $record['DrvutilCommand'] = $Command
         }
+        if (-not [string]::IsNullOrEmpty($Message)) {
+            $record['Message'] = $Message
+            $record['Level'] = $Level
+        }
         foreach ($name in @('ScriptHashError', 'ServiceStopError', 'LoggingError')) {
             $property = $Run.PSObject.Properties[$name]
             if ($null -ne $property -and -not [string]::IsNullOrEmpty($property.Value)) {
@@ -108,10 +173,55 @@ function Write-OsUpgradeAgentLog {
         $entry = '#~> ({0}):  ALWAYS  {1} 0 {2} {3}' -f
             $now.ToString('MM-dd-yyyy HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture),
             $PID, $Run.Sequence, ($record | ConvertTo-Json -Compress)
-        $Run.Writer.WriteLine($entry)
-        $Run.Writer.Flush()
+        $Run.Records.Add($entry)
+        if ($null -ne $Run.Writer) {
+            while ($Run.NativeRecordsWritten -lt $Run.Records.Count) {
+                $Run.Writer.WriteLine($Run.Records[$Run.NativeRecordsWritten])
+                $Run.Writer.Flush()
+                $Run.NativeRecordsWritten++
+            }
+        }
     } catch {
-        Write-Warning "Could not write execution telemetry for run $($Run.Id): $($_.Exception.Message)" -WarningAction Continue
+        $Run.LoggingError = "Could not write native execution telemetry: $($_.Exception.Message)"
+        $writer = $Run.Writer
+        $Run.Writer = $null
+        try {
+            if ($null -ne $writer) { $writer.Dispose() }
+        } catch {
+            $Run.LoggingError += " Could not close the native log: $($_.Exception.Message)"
+        }
+        Write-OsUpgradeMessage -Run $Run -Message $Run.LoggingError
+    }
+}
+
+function Write-OsUpgradeFallbackLog {
+    param($Run, [string]$InstallDirectory)
+
+    $stream = $null
+    $writer = $null
+    try {
+        $path = Join-Path -Path $InstallDirectory -ChildPath "OsUpgradeResync_$($Run.Id).log"
+        $stream = [IO.FileStream]::new($path, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+        $writer = [IO.StreamWriter]::new($stream, [Text.UTF8Encoding]::new($false))
+        foreach ($record in $Run.Records) {
+            $writer.WriteLine($record)
+        }
+        $writer.Dispose()
+        $writer = $null
+        $stream = $null
+        $Run.FallbackLogPath = $path
+    } catch {
+        Write-OsUpgradeMessage -Run $Run -Message "Could not write the fallback log in the ASR installation folder: $($_.Exception.Message)"
+    } finally {
+        try {
+            if ($null -ne $writer) {
+                $writer.Dispose()
+            } elseif ($null -ne $stream) {
+                $stream.Dispose()
+            }
+        } catch {
+            Write-OsUpgradeMessage -Run $Run -Message "Could not close the fallback log: $($_.Exception.Message)"
+        }
     }
 }
 
@@ -133,7 +243,7 @@ function Get-AsrMsiInstallDates {
                         $date.Year -ge 1601 -and $date.Date -le $today) {
                         $dates += $date.Date
                     } else {
-                        Write-Warning "The ASR MSI installation date in $view is missing or invalid."
+                        Write-OsUpgradeMessage -Message "The ASR MSI installation date in $view is missing or invalid."
                     }
                 } finally {
                     $productKey.Dispose()
@@ -164,19 +274,19 @@ function Get-AsrInstallDate {
     # MSI servicing can reset InstallDate; these directories can retain the earlier installation date.
     foreach ($directory in $directories | Select-Object -Unique) {
         if (-not (Test-Path -LiteralPath $directory -PathType Container -ErrorAction Stop)) {
-            Write-Warning "Cannot use the ASR directory creation date because '$directory' is missing."
+            Write-OsUpgradeMessage -Message "Cannot use the ASR directory creation date because '$directory' is missing."
             continue
         }
         $date = (Get-Item -LiteralPath $directory -ErrorAction Stop).CreationTime.Date
         if ($date.Year -lt 1601 -or $date -gt $today) {
-            Write-Warning "The ASR directory creation date for '$directory' is invalid."
+            Write-OsUpgradeMessage -Message "The ASR directory creation date for '$directory' is invalid."
             continue
         }
         $dates += $date
     }
 
     if ($dates.Count -eq 0) {
-        Write-Warning 'Cannot determine the ASR installation date. No changes were made. Contact Microsoft Support.' -WarningAction Continue
+        Write-OsUpgradeMessage -Message 'Cannot determine the ASR installation date. No changes were made. Contact Microsoft Support.'
         return $null
     }
     return $dates | Sort-Object | Select-Object -First 1
@@ -279,58 +389,58 @@ $undeterminedMessage = 'If you have upgraded OS from 2016 or above to higher ver
 $impactedMessage = 'Your Virtual machine is impacted, please contact https://aka.ms/azuresupport.'
 $completedMessage = 'Script executed, Wait for new recovery point to be available before performing test failover or failover.'
 
+$run = New-OsUpgradeLogRun
+$script:osUpgradeRun = $run
+$installDirectory = $null
+if (-not $WhatIfPreference) {
+    try {
+        $run.ScriptHash = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256 -ErrorAction Stop).Hash
+    } catch {
+        $run.ScriptHashError = $_.Exception.Message
+        Write-OsUpgradeMessage -Message "Could not calculate the script hash: $($run.ScriptHashError)"
+    }
+}
+
 try {
     $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
     $currentVersion = $null
     if (-not [version]::TryParse($os.Version, [ref]$currentVersion) -or $currentVersion.Build -le 0) {
-        Write-Host $undeterminedMessage
+        Complete-OsUpgradeAssessment -Message $undeterminedMessage
         return
     }
     if ($currentVersion.Major -ne 10 -or $currentVersion.Minor -ne 0) {
-        Write-Host $noImpactMessage
+        Complete-OsUpgradeAssessment -Message $noImpactMessage
         return
     }
     $upgrade = Get-WindowsUpgrade -CurrentVersion $currentVersion
+    $run.CurrentVersion = $upgrade.CurrentVersion
+    $run.PreviousVersion = $upgrade.PreviousVersion
     if ($upgrade.Status -eq 'NotUpgraded') {
-        Write-Host $noImpactMessage
+        Complete-OsUpgradeAssessment -Message $noImpactMessage
         return
     }
     if ($upgrade.Status -ne 'Upgraded') {
-        Write-Host $undeterminedMessage
+        if (-not [string]::IsNullOrEmpty($upgrade.Diagnostic)) {
+            Write-OsUpgradeMessage -Message $upgrade.Diagnostic
+        }
+        Complete-OsUpgradeAssessment -Message $undeterminedMessage
         return
     }
 
     $service = Get-Service -Name 'svagents' -ErrorAction Stop
-    $serviceConfiguration = Get-CimInstance -ClassName Win32_Service -Filter "Name='svagents'" -ErrorAction Stop
-    if ($null -eq $serviceConfiguration -or [string]::IsNullOrWhiteSpace($serviceConfiguration.PathName)) {
-        Write-Host $undeterminedMessage
+    $installDirectory = Get-OsUpgradeInstallDirectory
+    if ([string]::IsNullOrEmpty($installDirectory)) {
+        Complete-OsUpgradeAssessment -Message $undeterminedMessage
         return
     }
 
-    $imagePath = [Environment]::ExpandEnvironmentVariables($serviceConfiguration.PathName)
-    if ($imagePath -match '^\s*"(?<Executable>[^"]+)"(?:\s|$)' -or
-        $imagePath -match '^\s*(?<Executable>.+?\.exe)(?:\s|$)') {
-        $serviceExecutable = $Matches.Executable
-    } else {
-        Write-Host $undeterminedMessage
-        return
-    }
-
-    if (-not [IO.Path]::IsPathRooted($serviceExecutable) -or
-        [IO.Path]::GetFileName($serviceExecutable) -ine 'svagents.exe' -or
-        -not (Test-Path -LiteralPath $serviceExecutable -PathType Leaf)) {
-        Write-Host $undeterminedMessage
-        return
-    }
-
-    $installDirectory = [IO.Path]::GetDirectoryName($serviceExecutable)
-    $asrInstallDate = Get-AsrInstallDate -InstallDirectory $installDirectory 3>$null
+    $asrInstallDate = Get-AsrInstallDate -InstallDirectory $installDirectory
     if ($null -eq $asrInstallDate) {
-        Write-Host $undeterminedMessage
+        Complete-OsUpgradeAssessment -Message $undeterminedMessage -InstallDirectory $installDirectory
         return
     }
     if ($asrInstallDate.Date -gt $upgrade.Date.Date) {
-        Write-Host $noImpactMessage
+        Complete-OsUpgradeAssessment -Message $noImpactMessage -InstallDirectory $installDirectory
         return
     }
     $drvutil = Join-Path -Path $installDirectory -ChildPath 'drvutil.exe'
@@ -342,40 +452,29 @@ try {
         return
     }
 } catch {
-    Write-Host $undeterminedMessage
+    Write-OsUpgradeMessage -Message $_.Exception.Message
+    Complete-OsUpgradeAssessment -Message $undeterminedMessage -InstallDirectory $installDirectory
     return
 }
 
-$scriptHash = $null
-$scriptHashError = $null
-try {
-    $scriptHash = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256 -ErrorAction Stop).Hash
-} catch {
-    $scriptHashError = $_.Exception.Message
-}
-$run = [pscustomobject]@{
-    Id = [guid]::NewGuid().ToString('D')
-    StartedUtc = [datetime]::UtcNow.ToString('o')
-    ScriptHash = $scriptHash
-    PreviousVersion = $upgrade.PreviousVersion
-    CurrentVersion = $upgrade.CurrentVersion
-    Sequence = 0
-    Writer = $null
-    ScriptHashError = $scriptHashError
-    ServiceStopError = $null
-    LoggingError = $null
-}
 $exitCode = $null
 $commandSucceeded = $false
 $needsSupport = $false
 $supportShown = $false
+$supportLogged = $false
 
 try {
+    $serviceWarnings = @()
     try {
-        Stop-Service -Name 'svagents' -Confirm:$false -ErrorAction Stop -WarningAction SilentlyContinue
+        Stop-Service -Name 'svagents' -Confirm:$false -ErrorAction Stop -WarningAction SilentlyContinue -WarningVariable serviceWarnings
         $service.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(60))
     } catch {
         $run.ServiceStopError = $_.Exception.Message
+        Write-OsUpgradeMessage -Message "Could not stop svagents: $($run.ServiceStopError)"
+    } finally {
+        foreach ($warning in $serviceWarnings) {
+            Write-OsUpgradeMessage -Message ([string]$warning)
+        }
     }
 
     $result = Invoke-OsUpgradeDrvutil -Path $drvutil -Arguments @('--stopf', '-stopall')
@@ -386,8 +485,9 @@ try {
         $outputText -notmatch '\bFailed\b')
     if (-not $commandSucceeded) {
         $needsSupport = $true
-        Write-Host $impactedMessage
+        Write-OsUpgradeMessage -Message $impactedMessage -Level 'Information' -Console
         $supportShown = $true
+        $supportLogged = $true
     }
 
     $status = Invoke-OsUpgradeDrvutil -Path $drvutil -Arguments @('--ps', '--dm')
@@ -398,52 +498,78 @@ try {
     try {
         $service.Refresh()
         if ($service.Status -eq 'Stopped') {
-            $run.Writer = Open-OsUpgradeAgentLog -InstallDirectory $installDirectory 3>$null
-            Write-OsUpgradeAgentLog -Run $run -Stage 'Started' 3>$null
-            $stage = 'RecoveryFailed'
-            if ($commandSucceeded) {
-                $stage = 'FilteringSucceeded'
-            }
-            Write-OsUpgradeAgentLog -Run $run -Stage $stage -ExitCode $exitCode -Output $outputText -Command 'drvutil --stopf -stopall' 3>$null
-            Write-OsUpgradeAgentLog -Run $run -Stage 'DriverStatistics' -ExitCode $status.ExitCode -Output $status.Output -Command 'drvutil --ps --dm' 3>$null
+            $run.Writer = Open-OsUpgradeAgentLog -InstallDirectory $installDirectory
         } else {
             $run.LoggingError = 'svagents is not stopped; the active log cannot be safely updated.'
+            Write-OsUpgradeMessage -Message $run.LoggingError
         }
     } catch {
         $run.LoggingError = $_.Exception.Message
+        Write-OsUpgradeMessage -Message $run.LoggingError
     }
+    Write-OsUpgradeAgentLog -Run $run -Stage 'Started'
+    $stage = 'RecoveryFailed'
+    if ($commandSucceeded) {
+        $stage = 'FilteringSucceeded'
+    }
+    Write-OsUpgradeAgentLog -Run $run -Stage $stage -ExitCode $exitCode -Output $outputText -Command 'drvutil --stopf -stopall'
+    Write-OsUpgradeAgentLog -Run $run -Stage 'DriverStatistics' -ExitCode $status.ExitCode -Output $status.Output -Command 'drvutil --ps --dm'
 } catch {
     $needsSupport = $true
+    Write-OsUpgradeMessage -Message $_.Exception.Message
     if (-not $supportShown) {
-        Write-Host $impactedMessage
+        Write-OsUpgradeMessage -Message $impactedMessage -Level 'Information' -Console
         $supportShown = $true
+        $supportLogged = $true
     }
 } finally {
     try {
         try {
-            Write-OsUpgradeAgentLog -Run $run -Stage 'ServiceRestartRequested' 3>$null
+            if ($needsSupport -and -not $supportLogged) {
+                Write-OsUpgradeMessage -Message $impactedMessage -Level 'Information'
+                $supportLogged = $true
+            }
+            Write-OsUpgradeMessage -Message $completedMessage -Level 'Information'
+            Write-OsUpgradeAgentLog -Run $run -Stage 'ServiceRestartRequested'
         } catch {
             $run.LoggingError = $_.Exception.Message
+            Write-OsUpgradeMessage -Message $run.LoggingError
         } finally {
             if ($null -ne $run.Writer) {
+                $writer = $run.Writer
+                $run.Writer = $null
                 try {
-                    $run.Writer.Dispose()
+                    $writer.Dispose()
                 } catch {
                     $run.LoggingError = $_.Exception.Message
+                    Write-OsUpgradeMessage -Message $run.LoggingError
                 }
             }
         }
     } finally {
         Write-Host $completedMessage
+        $serviceWarnings = @()
         try {
-            Start-Service -Name 'svagents' -Confirm:$false -ErrorAction Stop -WarningAction SilentlyContinue
+            Start-Service -Name 'svagents' -Confirm:$false -ErrorAction Stop -WarningAction SilentlyContinue -WarningVariable serviceWarnings
             $service.WaitForStatus('Running', [TimeSpan]::FromSeconds(60))
         } catch {
             $needsSupport = $true
+            Write-OsUpgradeMessage -Message "Could not start svagents: $($_.Exception.Message)"
+        } finally {
+            foreach ($warning in $serviceWarnings) {
+                Write-OsUpgradeMessage -Message ([string]$warning)
+            }
         }
     }
 }
 
 if ($needsSupport -and -not $supportShown) {
+    if (-not $supportLogged) {
+        Write-OsUpgradeMessage -Message $impactedMessage -Level 'Information'
+    }
     Write-Host $impactedMessage
+}
+
+if ($run.NativeRecordsWritten -lt $run.Records.Count) {
+    Write-OsUpgradeFallbackLog -Run $run -InstallDirectory $installDirectory
 }
