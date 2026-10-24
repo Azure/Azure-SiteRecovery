@@ -41,14 +41,6 @@ The expected command output is `Returned Success from stop All filtering`.
 If the command or service restart fails, preserve the full output and contact
 Microsoft Support.
 
-The script prints a unique recovery run ID and records its start, filtering
-result, and service restart request in the existing `svagents` logs while the
-service is stopped. These records use the agent's normal log upload path and
-include the script hash and Windows versions. Upload depends on agent logging,
-connectivity, and log processing; a local record does not guarantee delivery.
-The restart-request record does not confirm that the service restarted or that
-synchronization completed. Preserve any telemetry warnings with the run ID.
-
 ## Verification
 
 Confirm that replication resumes, corrective synchronization completes for the
