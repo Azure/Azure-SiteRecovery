@@ -34,7 +34,8 @@ function Open-OsUpgradeAgentLog {
     )
     $currentLog = $currentLogs | Sort-Object Sequence -Descending | Select-Object -First 1
     if ($null -eq $currentLog) {
-        throw [IO.InvalidDataException]::new('No current svagents log file was found.')
+        Write-Warning 'No current svagents log file was found. Continuing without execution telemetry.'
+        return $null
     }
 
     # The caller stops svagents first; deny other writers and rotation until this handle is closed.
