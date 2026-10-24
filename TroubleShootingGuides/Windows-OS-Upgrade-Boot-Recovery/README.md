@@ -21,25 +21,12 @@ running.
    .\Invoke-OsUpgradeResync.ps1
    ```
 
-The script discovers the agent installation directory from the registered
-`svagents` service executable and checks that `drvutil.exe` exists. Before
-making changes, it checks retained Windows Setup history for an OS build upgrade
-on or after the detected ASR installation date.
+Running the script initiates mitigation for this OS-upgrade-related boot issue
+without a confirmation prompt. Allow corrective synchronization to complete and
+a new recovery point to become available before validating recovery.
 
-If a qualifying upgrade cannot be confirmed, the script makes no changes.
-Contact Microsoft Support if an upgrade is suspected but cannot be verified.
-Otherwise, the script automatically performs the following sequence without a
-confirmation prompt:
-
-| Step | Action |
-|---|---|
-| 1 | Stop `svagents` and wait for it to stop. |
-| 2 | Run `"<agent installation directory>\drvutil.exe" --stopf -stopall`. This stops filtering on all volumes. |
-| 3 | Restart `svagents` in a `finally` block, including if the command fails, and wait for it to run. |
-
-The expected command output is `Returned Success from stop All filtering`.
-If the command or service restart fails, preserve the full output and contact
-Microsoft Support.
+If the script reports that no changes were made or encounters an error, preserve
+the full output and contact Microsoft Support.
 
 ## Verification
 
