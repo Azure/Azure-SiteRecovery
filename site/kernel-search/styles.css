@@ -1,0 +1,44 @@
+:root {
+  color-scheme: light;
+  font: 1rem/1.5 system-ui, sans-serif;
+  color: #172b3a;
+  background: #f5f7fa;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 72rem; margin: auto; padding: 2rem 1.25rem; }
+h1 { margin: 0; font-size: clamp(2rem, 5vw, 3rem); line-height: 1.2; }
+h2 { font-size: 1.4rem; }
+a { color: #07599c; }
+code { overflow-wrap: anywhere; }
+.eyebrow { color: #40576b; font-weight: 600; }
+.notice { border-left: 0.3rem solid #146eb4; padding: 1rem; background: #e9f2fb; margin: 1.5rem 0; }
+.notice p { margin: 0.5rem 0; }
+fieldset { border: 1px solid #b5c3cf; border-radius: 0.5rem; padding: 1.25rem; background: white; }
+legend { font-size: 1.2rem; font-weight: 600; padding: 0 0.4rem; }
+label { display: block; font-weight: 600; }
+.hint { margin: 0.25rem 0 0.65rem; color: #40576b; }
+input[type="search"], select {
+  width: 100%; padding: 0.7rem; font: inherit; color: inherit;
+  border: 1px solid #788d9e; border-radius: 0.25rem; background: white;
+}
+.checkbox { display: flex; align-items: start; gap: 0.5rem; margin: 1rem 0; font-weight: 400; }
+.checkbox input { margin-top: 0.4rem; flex-shrink: 0; }
+.filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 1rem; }
+.filters label { margin-bottom: 0.35rem; }
+.actions { display: flex; gap: 0.75rem; margin-top: 1.25rem; }
+button { padding: 0.65rem 1rem; font: inherit; font-weight: 600; background: #07599c; color: white; border: 1px solid #07599c; border-radius: 0.25rem; cursor: pointer; }
+button.secondary { background: white; color: #07599c; }
+button:disabled { opacity: 0.6; cursor: default; }
+:focus-visible { outline: 3px solid #9a4f00; outline-offset: 3px; }
+.result-list { list-style: none; padding: 0; }
+.result-list > li { padding: 1rem; margin-bottom: 1rem; background: white; border: 1px solid #b5c3cf; border-radius: 0.4rem; overflow-wrap: anywhere; }
+.result-list h3 { margin: 0 0 0.4rem; font-size: 1.05rem; }
+.result-list p { margin: 0 0 0.5rem; }
+summary { cursor: pointer; color: #07599c; }
+details ul { margin-top: 0.5rem; }
+details li { padding: 0.25rem 0; }
+footer { border-top: 1px solid #b5c3cf; margin-top: 2rem; padding-top: 1rem; color: #40576b; }
+.skip-link { position: absolute; top: -5rem; padding: 0.75rem; background: white; }
+.skip-link:focus { top: 0; }
+[hidden] { display: none !important; }
