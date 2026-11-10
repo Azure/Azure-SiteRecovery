@@ -1,0 +1,81 @@
+name: Kernel search
+
+on:
+  pull_request:
+    paths:
+      - "MobilityAgent/AzureToAzure/SupportedKernels/**"
+      - "MobilityAgent/OnPremiseToAzure/SupportedKernels/**"
+      - "MobilityAgent/README.md"
+      - "MobilityAgent/KernelModuleUpdates/README.md"
+      - "scripts/build_kernel_index.py"
+      - "site/kernel-search/**"
+      - "tests/test_build_kernel_index.py"
+      - "tests/kernel_search.test.mjs"
+      - ".github/workflows/kernel-search.yml"
+  push:
+    branches: [main]
+    paths:
+      - "MobilityAgent/AzureToAzure/SupportedKernels/**"
+      - "MobilityAgent/OnPremiseToAzure/SupportedKernels/**"
+      - "MobilityAgent/README.md"
+      - "MobilityAgent/KernelModuleUpdates/README.md"
+      - "scripts/build_kernel_index.py"
+      - "site/kernel-search/**"
+      - "tests/test_build_kernel_index.py"
+      - "tests/kernel_search.test.mjs"
+      - ".github/workflows/kernel-search.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - name: Test manifest index and search
+        run: |
+          python -B -m unittest discover -s tests -p 'test_*.py'
+          node --test tests/kernel_search.test.mjs
+      - name: Build static search
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+        run: |
+          python -B scripts/build_kernel_index.py \
+            --output-dir "$RUNNER_TEMP/kernel-search" \
+            --source-commit "$SOURCE_COMMIT" \
+            --repository "$SOURCE_REPOSITORY"
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ runner.temp }}/kernel-search
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+      - name: Deploy search
+        id: deployment
+        uses: actions/deploy-pages@v5

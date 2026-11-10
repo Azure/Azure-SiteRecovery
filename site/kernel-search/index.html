@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Azure Site Recovery kernel search</title>
+    <meta name="description" content="Search published A2A and V2A Linux supported-kernel manifests.">
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#results">Skip to results</a>
+    <main>
+      <header>
+        <p class="eyebrow">Azure Site Recovery</p>
+        <h1>Find a Linux kernel</h1>
+        <p>Search the published A2A and V2A supported-kernel manifests.</p>
+      </header>
+      <aside class="notice" aria-label="How to interpret results">
+        <strong>A match means the kernel is listed in that published manifest.</strong>
+        <p>Folder versions identify kernel module updates, not necessarily Mobility Agent or extension releases.
+          Updates can contain only selected distributions. A missing entry does not prove a kernel is unsupported,
+          and results do not establish compatibility with your installed agent.</p>
+        <a href="https://github.com/Azure/Azure-SiteRecovery/blob/main/MobilityAgent/KernelModuleUpdates/README.md">Kernel module update guidance</a>
+      </aside>
+      <form id="search-form" role="search">
+        <fieldset id="search-controls" disabled>
+          <legend>Search kernels</legend>
+          <label for="kernel">Kernel release</label>
+          <p id="kernel-help" class="hint">Paste the output of <code>uname -r</code>, for example <code>6.1.0-13-amd64</code>.</p>
+          <input id="kernel" name="kernel" type="search" aria-describedby="kernel-help" placeholder="6.1.0-13-amd64" autocomplete="off" spellcheck="false">
+          <label class="checkbox" for="partial">
+            <input id="partial" name="partial" type="checkbox">
+            Partial search (literal substring instead of exact match)
+          </label>
+          <div class="filters">
+            <div>
+              <label for="scenario">Replication scenario</label>
+              <select id="scenario" name="scenario"><option value="">All scenarios</option></select>
+            </div>
+            <div>
+              <label for="distribution">Linux distro / release</label>
+              <select id="distribution" name="distribution"><option value="">All distributions</option></select>
+            </div>
+            <div>
+              <label for="version">Kernel module update version</label>
+              <select id="version" name="version"><option value="">All update versions</option></select>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="submit">Search</button>
+            <button type="reset" class="secondary">Reset</button>
+          </div>
+        </fieldset>
+      </form>
+      <section id="results" aria-labelledby="results-heading" tabindex="-1">
+        <h2 id="results-heading">Manifest matches</h2>
+        <p id="status" role="status">Loading published manifests...</p>
+        <button id="retry" class="secondary" type="button" hidden>Retry loading</button>
+        <ul id="result-list" class="result-list"></ul>
+        <button id="show-more" class="secondary" type="button" hidden>Show more matches</button>
+      </section>
+      <footer>
+        <p id="provenance"></p>
+        <a href="https://github.com/Azure/Azure-SiteRecovery">Source repository</a>
+      </footer>
+      <noscript><p>This search needs JavaScript. <a href="https://github.com/Azure/Azure-SiteRecovery/tree/main/MobilityAgent">Browse the original manifests instead.</a></p></noscript>
+    </main>
+  </body>
+</html>
